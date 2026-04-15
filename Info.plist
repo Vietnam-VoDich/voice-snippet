@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>en</string>
+    <key>CFBundleExecutable</key>
+    <string>VoiceSnippet</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.ataonat.voicesnippet</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundleName</key>
+    <string>Voice Snippet</string>
+    <key>CFBundleDisplayName</key>
+    <string>Voice Snippet</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>0.1.0</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>13.0</string>
+    <key>LSUIElement</key>
+    <false/>
+    <key>NSHighResolutionCapable</key>
+    <true/>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Voice Snippet records your voice and sends it to the local AnalystAI backend for transcription. Audio never leaves your Mac.</string>
+    <key>NSAppleEventsUsageDescription</key>
+    <string>Voice Snippet pastes transcribed text into the frontmost app.</string>
+</dict>
+</plist>
