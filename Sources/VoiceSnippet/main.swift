@@ -7,7 +7,7 @@ import SwiftUI
 
 final class FloatingSnippetWindow: NSWindow {
     init(contentView: NSView) {
-        super.init(contentRect: NSRect(x: 0, y: 0, width: 480, height: 520),
+        super.init(contentRect: NSRect(x: 0, y: 0, width: 580, height: 620),
                    styleMask: [.borderless, .fullSizeContentView],
                    backing: .buffered, defer: false)
         level = .floating
@@ -67,7 +67,7 @@ final class AppController: NSObject, NSApplicationDelegate {
             RootView(state: self.state, actions: actions)
         }
         let hosting = NSHostingView(rootView: root)
-        hosting.frame = NSRect(x: 0, y: 0, width: 480, height: 520)
+        hosting.frame = NSRect(x: 0, y: 0, width: 580, height: 620)
         window = FloatingSnippetWindow(contentView: hosting)
 
         state.$viewMode
@@ -157,7 +157,7 @@ final class AppController: NSObject, NSApplicationDelegate {
         guard let window else { return }
         let sz: NSSize = state.viewMode == .mini
             ? NSSize(width: 90, height: 56)
-            : NSSize(width: 480, height: 520)
+            : NSSize(width: 580, height: 620)
         var frame = window.frame
         let topY = frame.maxY
         frame.size = sz

@@ -1,6 +1,12 @@
 import AppKit
 import SwiftUI
 
+// Hamilton brand blue
+extension Color {
+    static let hamiltonBlue = Color(red: 0.20, green: 0.45, blue: 0.90)
+    static let hamiltonLight = Color(red: 0.93, green: 0.96, blue: 1.0)
+}
+
 // MARK: - Components
 
 struct LevelMeter: View {
@@ -51,17 +57,17 @@ struct SnippetChrome<Content: View>: View {
     var body: some View {
         if state.viewMode == .mini {
             content()
-                .background(Capsule(style: .continuous).fill(.regularMaterial))
+                .background(Capsule(style: .continuous).fill(Color.white))
                 .clipShape(Capsule(style: .continuous))
-                .shadow(color: .black.opacity(0.20), radius: 16, y: 6)
+                .shadow(color: .black.opacity(0.16), radius: 12, y: 4)
                 .padding(8)
         } else {
             ZStack(alignment: .topTrailing) {
                 content()
-                    .background(.regularMaterial,
+                    .background(Color.white,
                                 in: RoundedRectangle(cornerRadius: radius, style: .continuous))
-                    .shadow(color: .black.opacity(0.22), radius: 20, y: 8)
-                    .shadow(color: .black.opacity(0.08), radius: 3, y: 1)
+                    .shadow(color: Color(red: 0.1, green: 0.2, blue: 0.4).opacity(0.16), radius: 20, y: 8)
+                    .shadow(color: Color(red: 0.1, green: 0.2, blue: 0.4).opacity(0.06), radius: 3, y: 1)
 
                 Button(action: onClose) {
                     Image(systemName: "xmark.circle.fill")
@@ -118,9 +124,9 @@ struct MiniPill: View {
             } label: {
                 ZStack {
                     Circle()
-                        .fill(isRecording ? Color.red.gradient : Color.accentColor.gradient)
+                        .fill(isRecording ? Color.red.gradient : Color.hamiltonBlue.gradient)
                         .frame(width: 36, height: 36)
-                        .shadow(color: (isRecording ? Color.red : .accentColor).opacity(0.35), radius: 6, y: 2)
+                        .shadow(color: (isRecording ? Color.red : .hamiltonBlue).opacity(0.35), radius: 6, y: 2)
                     Image(systemName: isRecording ? "stop.fill" : "mic.fill")
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(.white)
@@ -172,7 +178,7 @@ struct TabbedView: View {
                             Text(tab.label)
                                 .font(.system(size: 10))
                         }
-                        .foregroundColor(state.selectedTab == tab ? .accentColor : .secondary)
+                        .foregroundColor(state.selectedTab == tab ? .hamiltonBlue : .secondary)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 8)
                         .contentShape(Rectangle())
@@ -182,8 +188,7 @@ struct TabbedView: View {
             }
             .padding(.bottom, 4)
         }
-        .padding(.top, 12)
-        .padding(.horizontal, 16)
+        .padding(.top, 8)
     }
 }
 
@@ -252,7 +257,7 @@ struct RecordTab: View {
                         }
                         .buttonStyle(.borderedProminent)
                         .controlSize(.large)
-                        .tint(isRecording ? .red : .accentColor)
+                        .tint(isRecording ? .red : .hamiltonBlue)
 
                         if isRecording {
                             Button("Cancel", role: .cancel, action: actions.cancelRecord)
@@ -332,7 +337,7 @@ struct RecordTab: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
                 Text(label).font(.system(size: 10, weight: .semibold))
-                    .foregroundColor(accent ? .accentColor : .secondary)
+                    .foregroundColor(accent ? .hamiltonBlue : .secondary)
                 Spacer()
                 Button {
                     NSPasteboard.general.clearContents()
@@ -345,7 +350,7 @@ struct RecordTab: View {
                     }.font(.system(size: 10))
                 }
                 .buttonStyle(.plain)
-                .foregroundColor(accent ? .accentColor : .secondary)
+                .foregroundColor(accent ? .hamiltonBlue : .secondary)
             }
             Text(text)
                 .font(.system(size: 12))
@@ -354,7 +359,7 @@ struct RecordTab: View {
                 .padding(10)
                 .background(
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(accent ? Color.accentColor.opacity(0.06) : Color.primary.opacity(0.04))
+                        .fill(accent ? Color.hamiltonBlue.opacity(0.06) : Color.primary.opacity(0.04))
                 )
         }
     }
@@ -469,7 +474,7 @@ struct HistoryTab: View {
                     .font(.system(size: 11))
                 }
                 .buttonStyle(.plain)
-                .foregroundColor(.accentColor)
+                .foregroundColor(.hamiltonBlue)
             }
         }
     }
@@ -655,7 +660,7 @@ struct SettingsTab: View {
                     Label("Open voice-notes folder", systemImage: "folder")
                         .font(.system(size: 12))
                 }
-                .buttonStyle(.plain).foregroundColor(.accentColor)
+                .buttonStyle(.plain).foregroundColor(.hamiltonBlue)
                 Spacer()
             }
 
