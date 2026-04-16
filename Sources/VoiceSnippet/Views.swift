@@ -263,6 +263,8 @@ struct RecordTab: View {
                             Menu {
                                 ForEach(Array(styles.enumerated()), id: \.element.id) { idx, s in
                                     Button(s.label) { actions.format(s.id, nil) }
+                                        .keyboardShortcut(KeyEquivalent(Character("\(idx + 1)")),
+                                                          modifiers: .command)
                                 }
                                 Divider()
                                 Button("Custom prompt…") { state.showCustom.toggle() }
