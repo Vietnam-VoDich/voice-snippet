@@ -683,62 +683,73 @@ final class FloatingSnippetWindow: NSWindow {
 
 /// Container view that wraps the SnippetView with rounded corners and vibrant material.
 struct SnippetChrome<Content: View>: View {
+    @ObservedObject var state: PopoverState
     var onClose: () -> Void
     @ViewBuilder var content: () -> Content
 
     private let radius: CGFloat = 22
 
     var body: some View {
-        ZStack(alignment: .topTrailing) {
+        if state.viewMode == .mini {
+            // Mini mode: bare pill, no chrome box
             content()
-                .padding(16)
-                .background {
-                    ZStack {
-                        // Base frosted layer — Apple's "regular" material sits between
-                        // ultra-thin and thick, readable but shows a hint of what's behind.
-                        RoundedRectangle(cornerRadius: radius, style: .continuous)
-                            .fill(.regularMaterial)
-
-                        // Subtle top-edge highlight — mimics Apple's lucent panels
-                        // where a faint bright line runs along the top.
-                        VStack {
+                .background(
+                    Capsule(style: .continuous)
+                        .fill(.regularMaterial)
+                        .shadow(color: .black.opacity(0.15), radius: 12, y: 6)
+                )
+                .overlay(
+                    Capsule(style: .continuous)
+                        .strokeBorder(Color.white.opacity(0.12), lineWidth: 0.5)
+                )
+                .padding(6)
+        } else {
+            ZStack(alignment: .topTrailing) {
+                content()
+                    .padding(16)
+                    .background {
+                        ZStack {
                             RoundedRectangle(cornerRadius: radius, style: .continuous)
-                                .fill(
-                                    LinearGradient(
-                                        colors: [.white.opacity(0.18), .clear],
-                                        startPoint: .top, endPoint: .init(x: 0.5, y: 0.15)
+                                .fill(.regularMaterial)
+                            VStack {
+                                RoundedRectangle(cornerRadius: radius, style: .continuous)
+                                    .fill(
+                                        LinearGradient(
+                                            colors: [.white.opacity(0.18), .clear],
+                                            startPoint: .top, endPoint: .init(x: 0.5, y: 0.15)
+                                        )
                                     )
-                                )
-                                .frame(height: 60)
-                            Spacer()
+                                    .frame(height: 60)
+                                Spacer()
+                            }
                         }
+                        .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
                     }
                     .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
-                }
-                .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: radius, style: .continuous)
-                        .strokeBorder(
-                            LinearGradient(
-                                colors: [.white.opacity(0.22), .white.opacity(0.06)],
-                                startPoint: .top, endPoint: .bottom
-                            ),
-                            lineWidth: 0.5
-                        )
-                )
-                .shadow(color: .black.opacity(0.18), radius: 30, y: 12)
-                .shadow(color: .black.opacity(0.06), radius: 4, y: 2)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: radius, style: .continuous)
+                            .strokeBorder(
+                                LinearGradient(
+                                    colors: [.white.opacity(0.22), .white.opacity(0.06)],
+                                    startPoint: .top, endPoint: .bottom
+                                ),
+                                lineWidth: 0.5
+                            )
+                    )
+                    .shadow(color: .black.opacity(0.18), radius: 30, y: 12)
+                    .shadow(color: .black.opacity(0.06), radius: 4, y: 2)
 
-            Button(action: onClose) {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.system(size: 14))
-                    .foregroundStyle(.tertiary)
+                Button(action: onClose) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 14))
+                        .foregroundStyle(.tertiary)
+                }
+                .buttonStyle(.plain)
+                .padding(10)
+                .keyboardShortcut(.cancelAction)
             }
-            .buttonStyle(.plain)
-            .padding(10)
-            .keyboardShortcut(.cancelAction)
+            .padding(12)
         }
-        .padding(12)
     }
 }
 
@@ -767,7 +778,7 @@ final class AppController: NSObject, NSApplicationDelegate {
             btn.sendAction(on: [.leftMouseUp, .rightMouseUp])
         }
 
-        let root = SnippetChrome(onClose: { [weak self] in self?.hideWindow() }) {
+        let root = SnippetChrome(state: self.state, onClose: { [weak self] in self?.hideWindow() }) {
             SnippetView(
                 state: self.state,
                 onToggleRecord: { [weak self] in self?.toggleRecording() },
@@ -883,7 +894,7 @@ final class AppController: NSObject, NSApplicationDelegate {
         guard let window else { return }
         let newSize: NSSize
         switch state.viewMode {
-        case .mini:    newSize = NSSize(width: 100, height: 60)
+        case .mini:    newSize = NSSize(width: 90, height: 56)
         case .compact: newSize = NSSize(width: 480, height: 88)
         case .full:    newSize = NSSize(width: 680, height: 700)
         }
