@@ -13,7 +13,7 @@ final class FloatingSnippetWindow: NSWindow {
         level = .floating
         isOpaque = false
         backgroundColor = .clear
-        hasShadow = true
+        hasShadow = false  // SwiftUI shadow handles the visual edge; system shadow creates the ugly border line
         isMovableByWindowBackground = true
         titleVisibility = .hidden
         titlebarAppearsTransparent = true
