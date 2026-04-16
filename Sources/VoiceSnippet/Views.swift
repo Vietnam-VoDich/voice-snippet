@@ -193,6 +193,7 @@ struct TabbedView: View {
                 case .settings:   SettingsTab(state: state, actions: actions)
                 }
             }
+            .padding(.horizontal, 4)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             // Bottom tab bar
@@ -218,7 +219,8 @@ struct TabbedView: View {
             }
             .padding(.bottom, 4)
         }
-        .padding(.top, 8)
+        .padding(.top, 14)
+        .padding(.horizontal, 12)
     }
 }
 

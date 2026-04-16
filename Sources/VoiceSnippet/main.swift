@@ -193,13 +193,19 @@ final class AppController: NSObject, NSApplicationDelegate {
     private func openAndToggle() {
         guard let window else { return }
         if !window.isVisible {
-            showWindow()
+            // Hidden → show tabbed + start recording
             state.viewMode = .tabbed
             state.selectedTab = .record
+            showWindow()
             if case .recording = state.phase { } else { toggleRecording() }
         } else if case .recording = state.phase {
+            // Recording → stop
             toggleRecording()
+        } else if state.viewMode == .tabbed {
+            // Tabbed idle → fold to mini widget
+            state.viewMode = .mini
         } else {
+            // Mini idle → hide
             hideWindow()
         }
     }
