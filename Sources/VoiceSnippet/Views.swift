@@ -57,9 +57,9 @@ struct SnippetChrome<Content: View>: View {
     var body: some View {
         if state.viewMode == .mini {
             content()
-                .background(Capsule(style: .continuous).fill(Color.white))
-                .clipShape(Capsule(style: .continuous))
-                .shadow(color: .black.opacity(0.16), radius: 12, y: 4)
+                .background(Color.white,
+                            in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .shadow(color: Color(red: 0.1, green: 0.2, blue: 0.4).opacity(0.14), radius: 16, y: 6)
                 .padding(8)
         } else {
             ZStack(alignment: .topTrailing) {
@@ -116,33 +116,63 @@ struct MiniPill: View {
     }
 
     var body: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 10) {
+            // Status / last transcript preview
+            VStack(alignment: .leading, spacing: 2) {
+                if isRecording {
+                    HStack(spacing: 6) {
+                        Circle().fill(.red).frame(width: 6, height: 6)
+                        Text("Recording… \(formatTime(state.recordingSeconds))")
+                            .font(.system(size: 12, weight: .medium))
+                        LevelMeter(level: state.inputLevel).frame(width: 60)
+                    }
+                } else if !state.lastText.isEmpty {
+                    Text(state.currentText)
+                        .font(.system(size: 12))
+                        .lineLimit(1)
+                        .foregroundColor(.secondary)
+                } else {
+                    Text("Hamilton Voice")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            // Expand button
+            Button { state.viewMode = .tabbed } label: {
+                Image(systemName: "chevron.up")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(.secondary)
+                    .frame(width: 24, height: 24)
+            }
+            .buttonStyle(.plain)
+
+            // Mic button
             Button {
-                state.viewMode = .tabbed
-                state.selectedTab = .record
-                actions.toggleRecord()
+                if isRecording {
+                    actions.toggleRecord()
+                } else {
+                    actions.toggleRecord()
+                }
             } label: {
                 ZStack {
                     Circle()
                         .fill(isRecording ? Color.red.gradient : Color.hamiltonBlue.gradient)
                         .frame(width: 36, height: 36)
-                        .shadow(color: (isRecording ? Color.red : .hamiltonBlue).opacity(0.35), radius: 6, y: 2)
                     Image(systemName: isRecording ? "stop.fill" : "mic.fill")
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(.white)
                 }
             }
             .buttonStyle(.plain)
-
-            Button { state.viewMode = .tabbed } label: {
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 9, weight: .medium))
-                    .foregroundStyle(.tertiary)
-            }
-            .buttonStyle(.plain)
         }
-        .padding(.horizontal, 6)
-        .padding(.vertical, 4)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+    }
+
+    private func formatTime(_ s: Int) -> String {
+        String(format: "%d:%02d", s / 60, s % 60)
     }
 }
 
@@ -211,6 +241,7 @@ struct RecordTab: View {
         ZStack {
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 12) {
+                    Spacer().frame(height: 4)
                     // Status
                     HStack(spacing: 6) {
                         Circle().fill(dotColor).frame(width: 8, height: 8)
@@ -246,47 +277,61 @@ struct RecordTab: View {
                         }
                     }
 
-                    // Record button
-                    HStack(spacing: 8) {
-                        Button(action: actions.toggleRecord) {
-                            Label(isRecording ? "Stop" : (state.lastText.isEmpty ? "Record" : "New recording"),
-                                  systemImage: isRecording ? "stop.fill" : "mic.fill")
-                                .font(.system(size: 13, weight: .medium))
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 2)
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.large)
-                        .tint(isRecording ? .red : .hamiltonBlue)
-
-                        if isRecording {
-                            Button("Cancel", role: .cancel, action: actions.cancelRecord)
-                                .controlSize(.large)
-                        }
-
-                        if !state.lastText.isEmpty && !isRecording {
-                            Menu {
-                                ForEach(Array(styles.enumerated()), id: \.element.id) { idx, s in
-                                    Button(s.label) { actions.format(s.id, nil) }
-                                        .keyboardShortcut(KeyEquivalent(Character("\(idx + 1)")),
-                                                          modifiers: .command)
+                    // Record button — centered circle
+                    HStack {
+                        Spacer()
+                        VStack(spacing: 6) {
+                            Button(action: actions.toggleRecord) {
+                                ZStack {
+                                    Circle()
+                                        .fill(isRecording ? Color.red.gradient : Color.hamiltonBlue.gradient)
+                                        .frame(width: 56, height: 56)
+                                        .shadow(color: (isRecording ? Color.red : .hamiltonBlue).opacity(0.3),
+                                                radius: 8, y: 3)
+                                    Image(systemName: isRecording ? "stop.fill" : "mic.fill")
+                                        .font(.system(size: 22, weight: .semibold))
+                                        .foregroundStyle(.white)
                                 }
-                                Divider()
-                                Button("Custom prompt…") { state.showCustom.toggle() }
-                                if state.currentText != state.lastText {
-                                    Divider()
-                                    Button("Revert to original") {
-                                        state.currentText = state.lastText
-                                    }
-                                }
-                            } label: {
-                                Label("Format", systemImage: "wand.and.stars")
-                                    .font(.system(size: 13))
                             }
-                            .menuStyle(.borderlessButton)
-                            .frame(width: 120)
-                            .controlSize(.large)
-                            .disabled(state.isFormatting)
+                            .buttonStyle(.plain)
+                            Text(isRecording ? "Tap to stop" : (state.lastText.isEmpty ? "Tap to record" : "New recording"))
+                                .font(.system(size: 10))
+                                .foregroundColor(.secondary)
+                        }
+                        Spacer()
+                    }
+
+                    // Cancel + Format row
+                    if isRecording || (!state.lastText.isEmpty && !isRecording) {
+                        HStack(spacing: 10) {
+                            if isRecording {
+                                Button("Cancel", role: .cancel, action: actions.cancelRecord)
+                                    .controlSize(.small)
+                            }
+                            Spacer()
+                            if !state.lastText.isEmpty && !isRecording {
+                                Menu {
+                                    ForEach(Array(styles.enumerated()), id: \.element.id) { idx, s in
+                                        Button(s.label) { actions.format(s.id, nil) }
+                                            .keyboardShortcut(KeyEquivalent(Character("\(idx + 1)")),
+                                                              modifiers: .command)
+                                    }
+                                    Divider()
+                                    Button("Custom prompt…") { state.showCustom.toggle() }
+                                    if state.currentText != state.lastText {
+                                        Divider()
+                                        Button("Revert to original") {
+                                            state.currentText = state.lastText
+                                        }
+                                    }
+                                } label: {
+                                    Label("Format", systemImage: "wand.and.stars")
+                                        .font(.system(size: 12))
+                                }
+                                .menuStyle(.borderlessButton)
+                                .controlSize(.regular)
+                                .disabled(state.isFormatting)
+                            }
                         }
                     }
 
