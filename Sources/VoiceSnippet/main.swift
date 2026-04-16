@@ -609,11 +609,6 @@ struct SnippetView: View {
                     .fill(accent ? Color.accentColor.opacity(0.08)
                                   : Color.primary.opacity(0.04))
             )
-            .overlay(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .strokeBorder(accent ? Color.accentColor.opacity(0.20)
-                                         : Color.primary.opacity(0.06), lineWidth: 0.5)
-            )
         }
     }
 
@@ -665,7 +660,7 @@ struct SnippetView: View {
 
 final class FloatingSnippetWindow: NSWindow {
     init(contentView: NSView) {
-        super.init(contentRect: NSRect(x: 0, y: 0, width: 680, height: 700),
+        super.init(contentRect: NSRect(x: 0, y: 0, width: 520, height: 480),
                    styleMask: [.borderless, .fullSizeContentView],
                    backing: .buffered, defer: false)
         level = .floating
@@ -693,47 +688,22 @@ struct SnippetChrome<Content: View>: View {
 
     var body: some View {
         if state.viewMode == .mini {
-            // Mini mode: bare pill, no chrome box
+            // Mini mode: bare pill, no chrome box, no border
             content()
                 .background(
-                    Capsule(style: .continuous)
-                        .fill(.regularMaterial)
-                        .shadow(color: .black.opacity(0.15), radius: 12, y: 6)
+                    Capsule(style: .continuous).fill(.regularMaterial)
                 )
-                .overlay(
-                    Capsule(style: .continuous)
-                        .strokeBorder(Color.white.opacity(0.12), lineWidth: 0.5)
-                )
-                .padding(6)
+                .clipShape(Capsule(style: .continuous))
+                .shadow(color: .black.opacity(0.20), radius: 16, y: 6)
+                .padding(8)
         } else {
             ZStack(alignment: .topTrailing) {
                 content()
                     .padding(16)
-                    .background {
-                        ZStack {
-                            RoundedRectangle(cornerRadius: radius, style: .continuous)
-                                .fill(.regularMaterial)
-                            VStack {
-                                RoundedRectangle(cornerRadius: radius, style: .continuous)
-                                    .fill(
-                                        LinearGradient(
-                                            colors: [.white.opacity(0.18), .clear],
-                                            startPoint: .top, endPoint: .init(x: 0.5, y: 0.15)
-                                        )
-                                    )
-                                    .frame(height: 60)
-                                Spacer()
-                            }
-                        }
-                        .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
-                    }
-                    .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: radius, style: .continuous)
-                            .strokeBorder(Color.white.opacity(0.06), lineWidth: 0.5)
-                    )
-                    .shadow(color: .black.opacity(0.18), radius: 30, y: 12)
-                    .shadow(color: .black.opacity(0.06), radius: 4, y: 2)
+                    .background(.regularMaterial,
+                                in: RoundedRectangle(cornerRadius: radius, style: .continuous))
+                    .shadow(color: .black.opacity(0.22), radius: 20, y: 8)
+                    .shadow(color: .black.opacity(0.08), radius: 3, y: 1)
 
                 Button(action: onClose) {
                     Image(systemName: "xmark.circle.fill")
@@ -796,7 +766,7 @@ final class AppController: NSObject, NSApplicationDelegate {
             )
         }
         let hosting = NSHostingView(rootView: root)
-        hosting.frame = NSRect(x: 0, y: 0, width: 680, height: 700)
+        hosting.frame = NSRect(x: 0, y: 0, width: 520, height: 480)
         window = FloatingSnippetWindow(contentView: hosting)
 
         // Resize window when compact state changes
@@ -892,7 +862,7 @@ final class AppController: NSObject, NSApplicationDelegate {
         switch state.viewMode {
         case .mini:    newSize = NSSize(width: 90, height: 56)
         case .compact: newSize = NSSize(width: 480, height: 88)
-        case .full:    newSize = NSSize(width: 680, height: 700)
+        case .full:    newSize = NSSize(width: 520, height: 480)
         }
         var frame = window.frame
         // Keep the top-left of the window stable so the panel "grows downward"
@@ -968,9 +938,19 @@ final class AppController: NSObject, NSApplicationDelegate {
     // MARK: popover
 
     private func openAndToggle() {
-        showWindow()
-        if state.viewMode == .mini { state.viewMode = .compact }
-        toggleRecording()
+        guard let window else { return }
+        if !window.isVisible {
+            // Hidden → show + start recording
+            showWindow()
+            if state.viewMode == .mini { state.viewMode = .compact }
+            if case .recording = state.phase { } else { toggleRecording() }
+        } else if case .recording = state.phase {
+            // Recording → stop
+            toggleRecording()
+        } else {
+            // Idle/done → hide
+            hideWindow()
+        }
     }
 
     // MARK: recording flow
