@@ -395,6 +395,7 @@ struct SnippetView: View {
     }
 
     private var fullBody: some View {
+        ScrollView(.vertical, showsIndicators: false) {
         VStack(alignment: .leading, spacing: 10) {
             // Status row
             HStack(spacing: 8) {
@@ -514,7 +515,7 @@ struct SnippetView: View {
             if state.isFormatting {
                 HStack(spacing: 6) {
                     ProgressView().scaleEffect(0.5)
-                    Text("Rewriting with gemma3:4b…")
+                    Text("Rewriting…")
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
                 }
@@ -571,6 +572,7 @@ struct SnippetView: View {
         }
         .padding(12)
         .frame(minWidth: 520, maxWidth: .infinity)
+        } // ScrollView
     }
 
     @ViewBuilder
@@ -728,13 +730,7 @@ struct SnippetChrome<Content: View>: View {
                     .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
                     .overlay(
                         RoundedRectangle(cornerRadius: radius, style: .continuous)
-                            .strokeBorder(
-                                LinearGradient(
-                                    colors: [.white.opacity(0.22), .white.opacity(0.06)],
-                                    startPoint: .top, endPoint: .bottom
-                                ),
-                                lineWidth: 0.5
-                            )
+                            .strokeBorder(Color.white.opacity(0.06), lineWidth: 0.5)
                     )
                     .shadow(color: .black.opacity(0.18), radius: 30, y: 12)
                     .shadow(color: .black.opacity(0.06), radius: 4, y: 2)
