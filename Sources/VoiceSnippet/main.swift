@@ -212,9 +212,13 @@ final class PopoverState: ObservableObject {
     @Published var customInstruction: String = ""
     @Published var isFormatting: Bool = false
     @Published var showCustom: Bool = false
-    @Published var compact: Bool = UserDefaults.standard.object(forKey: "compact") as? Bool ?? true {
-        didSet { UserDefaults.standard.set(compact, forKey: "compact") }
+    enum ViewMode: Int { case mini = 0, compact = 1, full = 2 }
+    @Published var viewMode: ViewMode = {
+        ViewMode(rawValue: UserDefaults.standard.integer(forKey: "viewMode")) ?? .mini
+    }() {
+        didSet { UserDefaults.standard.set(viewMode.rawValue, forKey: "viewMode") }
     }
+    var compact: Bool { viewMode == .compact }
     @Published var recordingSeconds: Int = 0
     @Published var inputLevel: Double = 0      // 0..1 live mic level
     @Published var history: [HistoryItem] = []
@@ -299,11 +303,41 @@ struct SnippetView: View {
     ]
 
     var body: some View {
-        if state.compact {
-            compactBody
-        } else {
-            fullBody
+        switch state.viewMode {
+        case .mini: miniBody
+        case .compact: compactBody
+        case .full: fullBody
         }
+    }
+
+    // Just a mic button — the tiniest form factor
+    private var miniBody: some View {
+        HStack(spacing: 8) {
+            Button(action: {
+                state.viewMode = .compact
+                onToggleRecord()
+            }) {
+                ZStack {
+                    Circle()
+                        .fill(isRecording ? Color.red : Color.accentColor)
+                        .frame(width: 40, height: 40)
+                    Image(systemName: isRecording ? "stop.fill" : "mic.fill")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.white)
+                }
+            }
+            .buttonStyle(.plain)
+            .keyboardShortcut(.return)
+
+            Button { state.viewMode = .compact } label: {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary)
+            }
+            .buttonStyle(.plain)
+            .help("Expand (⌃⌥Space)")
+        }
+        .padding(8)
     }
 
     // Tiny single-row layout: status + record + expand
@@ -334,15 +368,21 @@ struct SnippetView: View {
             .keyboardShortcut(.return)
             .tint(isRecording ? .red : .accentColor)
 
-            Button {
-                state.compact = false
-            } label: {
+            Button { state.viewMode = .mini } label: {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+            }
+            .buttonStyle(.plain)
+            .help("Collapse to mic button")
+
+            Button { state.viewMode = .full } label: {
                 Image(systemName: "chevron.down")
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
             }
             .buttonStyle(.plain)
-            .help("Expand")
+            .help("Expand full")
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
@@ -361,9 +401,7 @@ struct SnippetView: View {
                         .foregroundColor(.secondary)
                 }
                 Spacer()
-                Button {
-                    state.compact = true
-                } label: {
+                Button { state.viewMode = .compact } label: {
                     Image(systemName: "chevron.up")
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
@@ -717,7 +755,7 @@ final class AppController: NSObject, NSApplicationDelegate {
         window = FloatingSnippetWindow(contentView: hosting)
 
         // Resize window when compact state changes
-        state.$compact
+        state.$viewMode
             .removeDuplicates()
             .sink { [weak self] _ in self?.applyCompactSize() }
             .store(in: &cancellables)
@@ -805,8 +843,12 @@ final class AppController: NSObject, NSApplicationDelegate {
 
     private func applyCompactSize() {
         guard let window else { return }
-        let newSize: NSSize = state.compact ? NSSize(width: 480, height: 88)
-                                            : NSSize(width: 680, height: 700)
+        let newSize: NSSize
+        switch state.viewMode {
+        case .mini:    newSize = NSSize(width: 100, height: 60)
+        case .compact: newSize = NSSize(width: 480, height: 88)
+        case .full:    newSize = NSSize(width: 680, height: 700)
+        }
         var frame = window.frame
         // Keep the top-left of the window stable so the panel "grows downward"
         let topY = frame.maxY
@@ -882,6 +924,7 @@ final class AppController: NSObject, NSApplicationDelegate {
 
     private func openAndToggle() {
         showWindow()
+        if state.viewMode == .mini { state.viewMode = .compact }
         toggleRecording()
     }
 
