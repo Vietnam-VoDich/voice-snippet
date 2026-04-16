@@ -263,22 +263,22 @@ struct LevelMeter: View {
     let level: Double  // 0..1
     var body: some View {
         GeometryReader { geo in
-            HStack(spacing: 2) {
-                ForEach(0..<20, id: \.self) { i in
-                    let threshold = Double(i) / 20.0
+            HStack(spacing: 1.5) {
+                ForEach(0..<16, id: \.self) { i in
+                    let threshold = Double(i) / 16.0
                     let on = level > threshold
-                    RoundedRectangle(cornerRadius: 1.5)
-                        .fill(on ? barColor(for: threshold) : Color.secondary.opacity(0.15))
-                        .frame(width: (geo.size.width - 2 * 19) / 20)
+                    RoundedRectangle(cornerRadius: 1)
+                        .fill(on ? barColor(for: threshold) : Color.primary.opacity(0.06))
+                        .frame(width: max(2, (geo.size.width - 1.5 * 15) / 16))
                 }
             }
         }
-        .frame(height: 10)
+        .frame(height: 6)
     }
     private func barColor(for t: Double) -> Color {
-        if t > 0.85 { return .red }
-        if t > 0.65 { return .orange }
-        return .green
+        if t > 0.85 { return .red.opacity(0.8) }
+        if t > 0.65 { return .orange.opacity(0.7) }
+        return .green.opacity(0.6)
     }
 }
 
@@ -312,18 +312,22 @@ struct SnippetView: View {
 
     // Just a mic button — the tiniest form factor
     private var miniBody: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 6) {
             Button(action: {
                 state.viewMode = .compact
                 onToggleRecord()
             }) {
                 ZStack {
                     Circle()
-                        .fill(isRecording ? Color.red : Color.accentColor)
-                        .frame(width: 40, height: 40)
+                        .fill(isRecording
+                            ? Color.red.gradient
+                            : Color.accentColor.gradient)
+                        .frame(width: 36, height: 36)
+                        .shadow(color: (isRecording ? Color.red : Color.accentColor).opacity(0.35),
+                                radius: 6, y: 2)
                     Image(systemName: isRecording ? "stop.fill" : "mic.fill")
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(.white)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(.white)
                 }
             }
             .buttonStyle(.plain)
@@ -331,13 +335,14 @@ struct SnippetView: View {
 
             Button { state.viewMode = .compact } label: {
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 10))
-                    .foregroundColor(.secondary)
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundStyle(.tertiary)
             }
             .buttonStyle(.plain)
             .help("Expand (⌃⌥Space)")
         }
-        .padding(8)
+        .padding(.horizontal, 6)
+        .padding(.vertical, 4)
     }
 
     // Tiny single-row layout: status + record + expand
@@ -598,13 +603,14 @@ struct SnippetView: View {
             }
             .frame(minHeight: 80, maxHeight: 160)
             .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(accent ? Color.accentColor.opacity(0.10)
-                                  : Color.secondary.opacity(0.12))
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(accent ? Color.accentColor.opacity(0.08)
+                                  : Color.primary.opacity(0.04))
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 8)
-                    .stroke(accent ? Color.accentColor.opacity(0.30) : Color.clear, lineWidth: 1)
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .strokeBorder(accent ? Color.accentColor.opacity(0.20)
+                                         : Color.primary.opacity(0.06), lineWidth: 0.5)
             )
         }
     }
@@ -679,28 +685,60 @@ final class FloatingSnippetWindow: NSWindow {
 struct SnippetChrome<Content: View>: View {
     var onClose: () -> Void
     @ViewBuilder var content: () -> Content
+
+    private let radius: CGFloat = 22
+
     var body: some View {
         ZStack(alignment: .topTrailing) {
             content()
                 .padding(16)
-                .background(.ultraThinMaterial)
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .background {
+                    ZStack {
+                        // Base frosted layer — Apple's "regular" material sits between
+                        // ultra-thin and thick, readable but shows a hint of what's behind.
+                        RoundedRectangle(cornerRadius: radius, style: .continuous)
+                            .fill(.regularMaterial)
+
+                        // Subtle top-edge highlight — mimics Apple's lucent panels
+                        // where a faint bright line runs along the top.
+                        VStack {
+                            RoundedRectangle(cornerRadius: radius, style: .continuous)
+                                .fill(
+                                    LinearGradient(
+                                        colors: [.white.opacity(0.18), .clear],
+                                        startPoint: .top, endPoint: .init(x: 0.5, y: 0.15)
+                                    )
+                                )
+                                .frame(height: 60)
+                            Spacer()
+                        }
+                    }
+                    .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
+                }
+                .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                    RoundedRectangle(cornerRadius: radius, style: .continuous)
+                        .strokeBorder(
+                            LinearGradient(
+                                colors: [.white.opacity(0.22), .white.opacity(0.06)],
+                                startPoint: .top, endPoint: .bottom
+                            ),
+                            lineWidth: 0.5
+                        )
                 )
-                .shadow(color: .black.opacity(0.35), radius: 24, y: 10)
+                .shadow(color: .black.opacity(0.18), radius: 30, y: 12)
+                .shadow(color: .black.opacity(0.06), radius: 4, y: 2)
 
             Button(action: onClose) {
                 Image(systemName: "xmark.circle.fill")
-                    .font(.system(size: 16))
-                    .foregroundStyle(.secondary)
+                    .font(.system(size: 14))
+                    .foregroundStyle(.tertiary)
             }
             .buttonStyle(.plain)
             .padding(10)
             .keyboardShortcut(.cancelAction)
         }
-        .padding(8) // breathing room for the shadow
+        .padding(12)
     }
 }
 
