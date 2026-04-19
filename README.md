@@ -21,44 +21,115 @@ Hamilton Voice is a thin Swift client. All the heavy lifting happens in two loca
 
 ### 1. Ollama — for voice reformatting (Clean / Bullets / Email / Formal / Notes / Tweet)
 
-Install Ollama: https://ollama.com
+**Step 1. Install Ollama.** Either download the native Mac app from https://ollama.com or use Homebrew:
 
-Then pull the fast formatter model the backend expects:
+```bash
+brew install ollama
+```
+
+**Step 2. Start the Ollama service.** If you installed the Mac app, launch **Ollama.app** — it adds a llama icon to your menubar and runs the server automatically. If you installed via Homebrew, run it yourself in a terminal (keep it running):
+
+```bash
+ollama serve
+```
+
+You can verify it's up with:
+
+```bash
+curl http://localhost:11434/api/tags
+# should return {"models":[...]} — empty list is fine on first run
+```
+
+**Step 3. Pull the formatter model.** The backend looks for `gemma3:4b` by default (env var `OLLAMA_FAST_MODEL`):
 
 ```bash
 ollama pull gemma3:4b
 ```
 
-That's the model referenced by `OLLAMA_FAST_MODEL` in the backend. It's ~3.3 GB, runs comfortably on any Apple-silicon Mac, and produces the rewrites in under a second on an M-class chip.
+This downloads ~3.3 GB the first time. Subsequent runs load from disk. On an M-class Mac it formats a paragraph in well under a second.
 
-If you want to swap to a different model, set the env var before starting the backend:
+**Step 4. Verify.** `ollama list` should show the model, and you should be able to chat with it:
 
 ```bash
-export OLLAMA_FAST_MODEL=qwen3:4b   # or whatever you prefer
+ollama list
+# NAME         ID              SIZE      MODIFIED
+# gemma3:4b    a2af6cc3eb7f    3.3 GB    …
+
+ollama run gemma3:4b "rewrite this as a tweet: hello world it's a nice day"
 ```
 
-Ollama must be reachable at `http://localhost:11434` (its default).
+**Swapping models.** Any Ollama chat model works. Point the backend at a different one with:
 
-### 2. AnalystAI Local backend — HTTP endpoints for transcribe + format
+```bash
+export OLLAMA_FAST_MODEL=qwen3:4b     # lighter, faster
+# or
+export OLLAMA_FAST_MODEL=qwen3:14b    # higher quality, slower
+```
 
-Hamilton Voice talks to a small FastAPI backend at `http://127.0.0.1:8003`. Two endpoints are used:
+…then restart the backend. Pull the model first (`ollama pull …`) or Ollama will do it on first request.
+
+### 2. Whisper (mlx-whisper) — for speech-to-text
+
+Transcription runs through the **AnalystAI Local backend** (see step 3), which wraps [`mlx-whisper`](https://github.com/ml-explore/mlx-examples/tree/main/whisper) — an Apple-Silicon-optimised port of OpenAI Whisper that runs on the GPU (no CUDA, no rosetta).
+
+**Step 1. mlx-whisper installs with the backend.** If you follow step 3 below (`pip install -r requirements.txt` in `analystai-local`), `mlx-whisper` is pulled in automatically. You can also install it standalone:
+
+```bash
+pip install mlx-whisper
+```
+
+Requires Apple Silicon (M1/M2/M3/M4). Intel Macs are not supported by MLX.
+
+**Step 2. The model downloads on first use.** You don't need to download it manually. The first time you hit `POST /transcribe`, mlx-whisper pulls `mlx-community/distil-whisper-large-v3` (~1.5 GB) from HuggingFace and caches it under:
+
+```
+~/.cache/huggingface/hub/models--mlx-community--distil-whisper-large-v3/
+```
+
+Subsequent requests load from disk in under a second. You'll see a one-time log line like `[Whisper] Loading model distil-whisper-large-v3 (first use — downloads if needed)…` in the backend output.
+
+**Optional: pre-download the model.** If you don't want the first recording to take an extra minute while it downloads, pre-fetch it:
+
+```bash
+pip install huggingface_hub
+huggingface-cli download mlx-community/distil-whisper-large-v3
+```
+
+**Swapping models.** Any MLX-community Whisper variant works. Set the env var before starting the backend:
+
+```bash
+export WHISPER_MODEL=distil-whisper-large-v3   # default — fast, English-only, good accuracy
+# or
+export WHISPER_MODEL=whisper-large-v3-mlx       # slower, multilingual, higher accuracy
+# or
+export WHISPER_MODEL=whisper-tiny-mlx           # tiny & fast, lower accuracy
+```
+
+Browse available variants at https://huggingface.co/mlx-community?search_models=whisper.
+
+### 3. AnalystAI Local backend — HTTP endpoints on :8003
+
+Hamilton Voice talks to a small FastAPI backend at `http://127.0.0.1:8003`. Two endpoints:
 
 | Endpoint | Purpose | Upstream |
 |---|---|---|
-| `POST /transcribe` | Upload an `audio/mp4` file, get back `{ "text": "..." }` | mlx-whisper + `distil-whisper-large-v3` |
-| `POST /voice-format` | Body `{ text, style, instruction? }` → `{ text }` | Ollama chat using `OLLAMA_FAST_MODEL` |
+| `POST /transcribe` | Upload an `audio/m4a` file (`multipart/form-data`, field `audio`), get back `{ "text": "..." }` | mlx-whisper + `$WHISPER_MODEL` |
+| `POST /voice-format` | Body `{ text, style, instruction? }` → `{ text }` | Ollama chat using `$OLLAMA_FAST_MODEL` |
 
-The STT model (`distil-whisper-large-v3`) is downloaded automatically on first transcription — about 1.5 GB — and cached under `~/.cache/huggingface/`.
-
-Override via env var if you want a different Whisper variant:
+**Setup:**
 
 ```bash
-export WHISPER_MODEL=distil-whisper-large-v3
+cd ~/Desktop/analystai-local                # or wherever the backend lives
+pip install -r backend/requirements.txt     # installs fastapi, uvicorn, mlx-whisper, etc.
+export PORT=8003                            # Hamilton Voice expects 8003
+python backend/app.py
 ```
 
-The backend also writes each successful transcription to `~/.analystai/voice-notes/YYYY-MM-DD.md` so your history survives app restarts.
+You should see `Uvicorn running on http://127.0.0.1:8003` in the output. Leave it running — Hamilton Voice connects on each recording.
 
-### 3. macOS permissions
+The backend also writes each successful transcription to `~/.analystai/voice-notes/YYYY-MM-DD.md` so history survives app restarts.
+
+### 4. macOS permissions
 
 First launch will prompt for:
 - **Microphone** — mandatory, for audio capture
