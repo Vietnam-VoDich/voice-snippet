@@ -40,22 +40,24 @@ curl http://localhost:11434/api/tags
 # should return {"models":[...]} — empty list is fine on first run
 ```
 
-**Step 3. Pull the formatter model.** The backend looks for `gemma3:4b` by default (env var `OLLAMA_FAST_MODEL`):
+**Step 3. Pull the formatter model.** The backend looks for `gemma3:1b` by default (env var `OLLAMA_FAST_MODEL`):
 
 ```bash
-ollama pull gemma3:4b
+ollama pull gemma3:1b
 ```
 
-This downloads ~3.3 GB the first time. Subsequent runs load from disk. On an M-class Mac it formats a paragraph in well under a second.
+This downloads ~750 MB the first time. Subsequent runs load from disk. On an M-class Mac it formats a paragraph in ~0.2 seconds (warm) or under 0.5 s (cold).
+
+> **Why not Qwen3 or Gemma4?** Qwen3 models generate a chain-of-thought reasoning trace before answering, which is great for complex problems but adds ~10 s per call for simple rewrites. Gemma4's smallest variant (`gemma4:e2b`) is 7.2 GB — overkill for "clean up filler words / make it a tweet". Gemma3:1b hits the sweet spot: small, fast, no thinking overhead, quality is more than enough for rewriting transcribed speech.
 
 **Step 4. Verify.** `ollama list` should show the model, and you should be able to chat with it:
 
 ```bash
 ollama list
 # NAME         ID              SIZE      MODIFIED
-# gemma3:4b    a2af6cc3eb7f    3.3 GB    …
+# gemma3:1b    a2af6cc3eb7f    3.3 GB    …
 
-ollama run gemma3:4b "rewrite this as a tweet: hello world it's a nice day"
+ollama run gemma3:1b "rewrite this as a tweet: hello world it's a nice day"
 ```
 
 **Swapping models.** Any Ollama chat model works. Point the backend at a different one with:
@@ -177,7 +179,7 @@ Entries persist across restarts in `dictionary.json`.
 │ (Swift / SwiftUI)│                            │                 │
 │                  │                            │ POST /transcribe│──▶ mlx-whisper (distil-whisper-large-v3)
 │ - AVAudioRecorder│                            │                 │
-│ - Hotkeys (⌥Q,⌥W)│                            │ POST /voice-fmt │──▶ Ollama :11434 (gemma3:4b)
+│ - Hotkeys (⌥Q,⌥W)│                            │ POST /voice-fmt │──▶ Ollama :11434 (gemma3:1b)
 │ - Status bar     │                            └─────────────────┘
 │ - Floating window│
 └──────────────────┘
@@ -198,7 +200,7 @@ All state lives locally. The app itself has zero network calls outside `127.0.0.
 
 **"No response from http://127.0.0.1:8003"** — the AnalystAI Local backend isn't running. Start it (`cd ~/Desktop/analystai-local && python backend/app.py` or equivalent) and verify with `lsof -iTCP:8003 -sTCP:LISTEN`.
 
-**Ollama timeout** — the first formatting request after an idle period can take a few seconds while Ollama warms the model. Make sure `ollama list` shows `gemma3:4b` and that `ollama serve` (or the Ollama menubar app) is running.
+**Ollama timeout** — the first formatting request after an idle period can take a few seconds while Ollama warms the model. Make sure `ollama list` shows `gemma3:1b` and that `ollama serve` (or the Ollama menubar app) is running.
 
 **Hotkey doesn't fire** — another app may have claimed `⌥Q` or `⌥W`. Close the conflicting app or edit `Backend.swift` → `Hotkey.register()` to pick different key codes.
 

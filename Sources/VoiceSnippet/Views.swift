@@ -746,7 +746,7 @@ struct SettingsTab: View {
                 }
                 Text("STT: distil-whisper-large-v3 (mlx-whisper)")
                     .font(.system(size: 11)).foregroundColor(.secondary)
-                Text("Format: gemma3:4b via Ollama")
+                Text("Format: gemma3:1b via Ollama (fast, no thinking overhead)")
                     .font(.system(size: 11)).foregroundColor(.secondary)
             }
 

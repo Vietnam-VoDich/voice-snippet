@@ -69,6 +69,7 @@ enum Backend {
     static func transcribe(fileURL: URL) async throws -> String {
         var request = URLRequest(url: Config.transcribeURL)
         request.httpMethod = "POST"
+        request.timeoutInterval = 180  // first run downloads the Whisper model (~1.5 GB)
         let boundary = "Boundary-\(UUID().uuidString)"
         request.setValue("multipart/form-data; boundary=\(boundary)",
                          forHTTPHeaderField: "Content-Type")
@@ -89,6 +90,7 @@ enum Backend {
     static func format(text: String, style: String, instruction: String?) async throws -> String {
         var request = URLRequest(url: Config.formatURL)
         request.httpMethod = "POST"
+        request.timeoutInterval = 120  // cold-start Ollama can take 10-30s on first call
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         var payload: [String: Any] = ["text": text, "style": style]
         if let instruction, !instruction.isEmpty { payload["instruction"] = instruction }
