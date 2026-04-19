@@ -164,19 +164,17 @@ enum Notes {
     }
 }
 
-// MARK: - Global hotkey
+// MARK: - Global hotkeys
 
 final class Hotkey {
     typealias Handler = () -> Void
-    var onPress: Handler?
-    var onRelease: Handler?
-    private var ref: EventHotKeyRef?
+    // Keyed by hotkey id (1 = show/hide toggle, 2 = record-now toggle)
+    var onPress: [UInt32: Handler] = [:]
+    var onRelease: [UInt32: Handler] = [:]
+    private var refs: [EventHotKeyRef?] = []
 
     func register() {
         let sig: FourCharCode = 0x56534E50
-        let id = EventHotKeyID(signature: sig, id: 1)
-        let keyCode = UInt32(kVK_Space)
-        let mods = UInt32(controlKey | optionKey)
 
         var specs = [
             EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed)),
@@ -185,12 +183,28 @@ final class Hotkey {
         InstallEventHandler(GetApplicationEventTarget(), { _, event, ctx in
             guard let ctx = ctx, let event = event else { return noErr }
             let me = Unmanaged<Hotkey>.fromOpaque(ctx).takeUnretainedValue()
+            var hkID = EventHotKeyID()
+            GetEventParameter(event, EventParamName(kEventParamDirectObject),
+                              EventParamType(typeEventHotKeyID), nil,
+                              MemoryLayout<EventHotKeyID>.size, nil, &hkID)
             let kind = GetEventKind(event)
-            if kind == UInt32(kEventHotKeyPressed) { me.onPress?() }
-            else if kind == UInt32(kEventHotKeyReleased) { me.onRelease?() }
+            if kind == UInt32(kEventHotKeyPressed) { me.onPress[hkID.id]?() }
+            else if kind == UInt32(kEventHotKeyReleased) { me.onRelease[hkID.id]?() }
             return noErr
         }, 2, &specs, Unmanaged.passUnretained(self).toOpaque(), nil)
 
-        RegisterEventHotKey(keyCode, mods, id, GetApplicationEventTarget(), 0, &ref)
+        // ⌥Q — show / hide window
+        var ref1: EventHotKeyRef?
+        RegisterEventHotKey(UInt32(kVK_ANSI_Q), UInt32(optionKey),
+                            EventHotKeyID(signature: sig, id: 1),
+                            GetApplicationEventTarget(), 0, &ref1)
+        refs.append(ref1)
+
+        // ⌥W — start / stop recording (show window if hidden)
+        var ref2: EventHotKeyRef?
+        RegisterEventHotKey(UInt32(kVK_ANSI_W), UInt32(optionKey),
+                            EventHotKeyID(signature: sig, id: 2),
+                            GetApplicationEventTarget(), 0, &ref2)
+        refs.append(ref2)
     }
 }

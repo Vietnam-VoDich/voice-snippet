@@ -7,6 +7,24 @@ extension Color {
     static let hamiltonLight = Color(red: 0.93, green: 0.96, blue: 1.0)
 }
 
+// MARK: - Window drag handle
+// Transparent area that lets the user drag the window.
+// Use as .background() on a region — buttons on top still receive clicks.
+struct WindowDragHandle: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView { DragNSView() }
+    func updateNSView(_ nsView: NSView, context: Context) {}
+
+    private final class DragNSView: NSView {
+        override func mouseDown(with event: NSEvent) {
+            window?.performDrag(with: event)
+        }
+        override func hitTest(_ point: NSPoint) -> NSView? {
+            // Only consume hits inside our bounds — foreground views still take precedence.
+            bounds.contains(point) ? self : nil
+        }
+    }
+}
+
 // MARK: - Components
 
 struct LevelMeter: View {
@@ -52,23 +70,26 @@ struct SnippetChrome<Content: View>: View {
     @ObservedObject var state: AppState
     var onClose: () -> Void
     @ViewBuilder var content: () -> Content
+    @Environment(\.colorScheme) private var colorScheme
     private let radius: CGFloat = 22
 
-    var body: some View {
-        if state.viewMode == .mini {
-            content()
-                .background(Color.white,
-                            in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-                .shadow(color: Color(red: 0.1, green: 0.2, blue: 0.4).opacity(0.14), radius: 16, y: 6)
-                .padding(8)
-        } else {
-            ZStack(alignment: .topTrailing) {
-                content()
-                    .background(Color.white,
-                                in: RoundedRectangle(cornerRadius: radius, style: .continuous))
-                    .shadow(color: Color(red: 0.1, green: 0.2, blue: 0.4).opacity(0.16), radius: 20, y: 8)
-                    .shadow(color: Color(red: 0.1, green: 0.2, blue: 0.4).opacity(0.06), radius: 3, y: 1)
+    private var cardBackground: Color {
+        colorScheme == .dark
+            ? Color(red: 0.12, green: 0.13, blue: 0.16)
+            : Color.white
+    }
 
+    var body: some View {
+        ZStack(alignment: .topTrailing) {
+            content()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(cardBackground,
+                            in: RoundedRectangle(cornerRadius: state.viewMode == .mini ? 18 : 22,
+                                                  style: .continuous))
+                .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.45 : 0.16),
+                        radius: 16, y: 6)
+
+            if state.viewMode == .tabbed {
                 Button(action: onClose) {
                     Image(systemName: "xmark.circle.fill")
                         .font(.system(size: 14))
@@ -78,8 +99,8 @@ struct SnippetChrome<Content: View>: View {
                 .padding(10)
                 .keyboardShortcut(.cancelAction)
             }
-            .padding(12)
         }
+        .padding(state.viewMode == .mini ? 8 : 12)
     }
 }
 
@@ -117,45 +138,45 @@ struct MiniPill: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            // Status / last transcript preview
-            VStack(alignment: .leading, spacing: 2) {
-                if isRecording {
-                    HStack(spacing: 6) {
-                        Circle().fill(.red).frame(width: 6, height: 6)
-                        Text("Recording… \(formatTime(state.recordingSeconds))")
-                            .font(.system(size: 12, weight: .medium))
-                        LevelMeter(level: state.inputLevel).frame(width: 60)
-                    }
-                } else if !state.lastText.isEmpty {
-                    Text(state.currentText)
-                        .font(.system(size: 12))
-                        .lineLimit(1)
-                        .foregroundColor(.secondary)
-                } else {
-                    Text("Hamilton Voice")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.secondary)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-
             // Expand button
             Button { state.viewMode = .tabbed } label: {
                 Image(systemName: "chevron.up")
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundColor(.secondary)
-                    .frame(width: 24, height: 24)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.hamiltonBlue)
+                    .frame(width: 28, height: 28)
+                    .background(Circle().fill(Color.hamiltonBlue.opacity(0.12)))
             }
             .buttonStyle(.plain)
+            .help("Expand to full view")
+
+            // Status / last transcript preview — drag area
+            ZStack(alignment: .leading) {
+                WindowDragHandle()
+                VStack(alignment: .leading, spacing: 2) {
+                    if isRecording {
+                        HStack(spacing: 6) {
+                            Circle().fill(.red).frame(width: 6, height: 6)
+                            Text("Recording… \(formatTime(state.recordingSeconds))")
+                                .font(.system(size: 12, weight: .medium))
+                            LevelMeter(level: state.inputLevel).frame(width: 60)
+                        }
+                    } else if !state.lastText.isEmpty {
+                        Text(state.currentText)
+                            .font(.system(size: 12))
+                            .lineLimit(1)
+                            .foregroundColor(.primary)
+                    } else {
+                        Text("Hamilton Voice")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .allowsHitTesting(false)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
 
             // Mic button
-            Button {
-                if isRecording {
-                    actions.toggleRecord()
-                } else {
-                    actions.toggleRecord()
-                }
-            } label: {
+            Button(action: actions.toggleRecord) {
                 ZStack {
                     Circle()
                         .fill(isRecording ? Color.red.gradient : Color.hamiltonBlue.gradient)
@@ -184,6 +205,37 @@ struct TabbedView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            // Persistent top header — always-visible mode controls
+            HStack(spacing: 8) {
+                Button { state.viewMode = .mini } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 10, weight: .semibold))
+                        Text("Mini")
+                            .font(.system(size: 11, weight: .medium))
+                    }
+                    .foregroundColor(.hamiltonBlue)
+                    .padding(.horizontal, 8).padding(.vertical, 4)
+                    .background(RoundedRectangle(cornerRadius: 6)
+                        .fill(Color.hamiltonBlue.opacity(0.1)))
+                }
+                .buttonStyle(.plain)
+                .help("Fold to mini widget")
+
+                Spacer()
+
+                Text(state.selectedTab.label)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(.secondary)
+                    .padding(.trailing, 28)  // clear the close X in the top-right corner
+            }
+            .padding(.horizontal, 12)
+            .padding(.top, 12)
+            .padding(.bottom, 6)
+            .background(WindowDragHandle())
+
+            Divider().opacity(0.3)
+
             // Tab content
             Group {
                 switch state.selectedTab {
@@ -193,7 +245,7 @@ struct TabbedView: View {
                 case .settings:   SettingsTab(state: state, actions: actions)
                 }
             }
-            .padding(.horizontal, 4)
+            .padding(.horizontal, 12)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             // Bottom tab bar
@@ -219,8 +271,7 @@ struct TabbedView: View {
             }
             .padding(.bottom, 4)
         }
-        .padding(.top, 14)
-        .padding(.horizontal, 12)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
@@ -254,13 +305,6 @@ struct RecordTab: View {
                                 .foregroundColor(.secondary)
                         }
                         Spacer()
-                        Button { state.viewMode = .mini } label: {
-                            Image(systemName: "minus")
-                                .font(.system(size: 10, weight: .medium))
-                                .foregroundStyle(.tertiary)
-                        }
-                        .buttonStyle(.plain)
-                        .help("Minimize")
                     }
 
                     // Audio meter
@@ -661,19 +705,25 @@ struct SettingsTab: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            // Hotkey
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Keyboard shortcut").font(.system(size: 11, weight: .semibold)).foregroundColor(.secondary)
+            // Hotkeys
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Keyboard shortcuts").font(.system(size: 11, weight: .semibold)).foregroundColor(.secondary)
                 HStack(spacing: 8) {
-                    Text("⌃⌥Space")
-                        .font(.system(size: 14, weight: .medium, design: .monospaced))
-                        .padding(.horizontal, 10).padding(.vertical, 6)
+                    Text("⌥Q")
+                        .font(.system(size: 13, weight: .medium, design: .monospaced))
+                        .padding(.horizontal, 10).padding(.vertical, 5)
                         .background(RoundedRectangle(cornerRadius: 6).fill(Color.primary.opacity(0.05)))
-                    Text("Control + Option + Space")
+                    Text("Show / hide window")
                         .font(.system(size: 11)).foregroundColor(.secondary)
                 }
-                Text("Hidden → Record → Stop → Hide")
-                    .font(.system(size: 10)).foregroundStyle(.tertiary)
+                HStack(spacing: 8) {
+                    Text("⌥W")
+                        .font(.system(size: 13, weight: .medium, design: .monospaced))
+                        .padding(.horizontal, 10).padding(.vertical, 5)
+                        .background(RoundedRectangle(cornerRadius: 6).fill(Color.primary.opacity(0.05)))
+                    Text("Record now — start / stop")
+                        .font(.system(size: 11)).foregroundColor(.secondary)
+                }
             }
 
             Divider().opacity(0.3)
@@ -681,7 +731,7 @@ struct SettingsTab: View {
             // Toggles
             Toggle("Auto-paste into frontmost app", isOn: $state.autoPaste)
                 .font(.system(size: 12))
-            Toggle("Push-to-talk (hold ⌃⌥Space)", isOn: $state.pushToTalk)
+            Toggle("Push-to-talk (hold ⌥W)", isOn: $state.pushToTalk)
                 .font(.system(size: 12))
 
             Divider().opacity(0.3)

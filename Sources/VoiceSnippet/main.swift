@@ -14,7 +14,7 @@ final class FloatingSnippetWindow: NSWindow {
         isOpaque = false
         backgroundColor = .clear
         hasShadow = false  // SwiftUI shadow handles the visual edge; system shadow creates the ugly border line
-        isMovableByWindowBackground = true
+        isMovableByWindowBackground = false
         titleVisibility = .hidden
         titlebarAppearsTransparent = true
         collectionBehavior = [.canJoinAllSpaces, .transient, .fullScreenAuxiliary]
@@ -71,26 +71,31 @@ final class AppController: NSObject, NSApplicationDelegate {
         window = FloatingSnippetWindow(contentView: hosting)
 
         state.$viewMode
+            .dropFirst()
             .removeDuplicates()
-            .sink { [weak self] _ in self?.applySize() }
+            .receive(on: DispatchQueue.main)  // fire AFTER the @Published value is stored and SwiftUI has updated
+            .sink { [weak self] newMode in self?.applySize(for: newMode) }
             .store(in: &cancellables)
 
-        applySize()
+        applySize(for: state.viewMode)
         showWindow()
 
-        hotkey.onPress = { [weak self] in
+        // ⌥Q — toggle show / hide window
+        hotkey.onPress[1] = { [weak self] in self?.openAndToggle() }
+
+        // ⌥W — record now (show if hidden, start/stop recording). Also handles push-to-talk.
+        hotkey.onPress[2] = { [weak self] in
             guard let self else { return }
             if self.state.pushToTalk {
                 if case .recording = self.state.phase { return }
                 self.showWindow()
-                self.state.viewMode = .tabbed
-                self.state.selectedTab = .record
                 self.toggleRecording()
             } else {
-                self.openAndToggle()
+                if let w = self.window, !w.isVisible { self.showWindow() }
+                self.toggleRecording()
             }
         }
-        hotkey.onRelease = { [weak self] in
+        hotkey.onRelease[2] = { [weak self] in
             guard let self else { return }
             if self.state.pushToTalk, case .recording = self.state.phase {
                 self.toggleRecording()
@@ -153,11 +158,11 @@ final class AppController: NSObject, NSApplicationDelegate {
         else { toggleWindow() }
     }
 
-    private func applySize() {
+    private func applySize(for mode: ViewMode) {
         guard let window else { return }
-        let sz: NSSize = state.viewMode == .mini
+        let sz: NSSize = mode == .mini
             ? NSSize(width: 420, height: 72)
-            : NSSize(width: 440, height: 560)
+            : NSSize(width: 440, height: 500)
         var frame = window.frame
         let topY = frame.maxY
         frame.size = sz
@@ -166,7 +171,8 @@ final class AppController: NSObject, NSApplicationDelegate {
             let vf = screen.visibleFrame
             frame.origin.x = max(vf.minX + 8, min(frame.origin.x, vf.maxX - sz.width - 8))
         }
-        window.setFrame(frame, display: true, animate: true)
+        window.setFrame(frame, display: true, animate: false)
+        NSLog("[VS] applySize mode=\(mode) -> \(Int(sz.width))x\(Int(sz.height)) actualFrame=\(Int(window.frame.width))x\(Int(window.frame.height))")
     }
 
     private func showWindow() {
@@ -193,19 +199,8 @@ final class AppController: NSObject, NSApplicationDelegate {
     private func openAndToggle() {
         guard let window else { return }
         if !window.isVisible {
-            // Hidden → show tabbed + start recording
-            state.viewMode = .tabbed
-            state.selectedTab = .record
             showWindow()
-            if case .recording = state.phase { } else { toggleRecording() }
-        } else if case .recording = state.phase {
-            // Recording → stop
-            toggleRecording()
-        } else if state.viewMode == .tabbed {
-            // Tabbed idle → fold to mini widget
-            state.viewMode = .mini
         } else {
-            // Mini idle → hide
             hideWindow()
         }
     }
@@ -218,7 +213,7 @@ final class AppController: NSObject, NSApplicationDelegate {
                                action: #selector(toggleAutoPaste), keyEquivalent: "")
         paste.target = self; paste.state = state.autoPaste ? .on : .off
         menu.addItem(paste)
-        let ptt = NSMenuItem(title: "Push-to-talk (hold ⌃⌥Space)",
+        let ptt = NSMenuItem(title: "Push-to-talk (hold ⌥W)",
                              action: #selector(togglePushToTalk), keyEquivalent: "")
         ptt.target = self; ptt.state = state.pushToTalk ? .on : .off
         menu.addItem(ptt)
@@ -294,6 +289,7 @@ final class AppController: NSObject, NSApplicationDelegate {
             state.currentText = text
             state.phase = .done
             state.addToHistory(text)
+            Notes.append(text)
             setMenubarIcon(.idle)
             copyToPasteboard()
             state.flashCopied()
