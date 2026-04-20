@@ -13,8 +13,8 @@ final class FloatingSnippetWindow: NSWindow {
         level = .floating
         isOpaque = false
         backgroundColor = .clear
-        hasShadow = false  // SwiftUI shadow handles the visual edge; system shadow creates the ugly border line
-        isMovableByWindowBackground = false
+        hasShadow = false  // SwiftUI draws the shadow; the system shadow would show a hard edge around the rounded corners
+        isMovableByWindowBackground = false  // dragging is handled explicitly via WindowDragHandle
         titleVisibility = .hidden
         titlebarAppearsTransparent = true
         collectionBehavior = [.canJoinAllSpaces, .transient, .fullScreenAuxiliary]
@@ -105,7 +105,6 @@ final class AppController: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        state.viewMode = .tabbed
         showWindow()
         return true
     }
@@ -119,7 +118,7 @@ final class AppController: NSObject, NSApplicationDelegate {
         btn.title = ""
         switch s {
         case .idle:
-            let img = NSImage(systemSymbolName: "mic", accessibilityDescription: "Hamilton Voice")
+            let img = NSImage(systemSymbolName: "mic", accessibilityDescription: "Voice Snippet")
             img?.isTemplate = true
             btn.image = img
             btn.contentTintColor = nil
@@ -172,7 +171,6 @@ final class AppController: NSObject, NSApplicationDelegate {
             frame.origin.x = max(vf.minX + 8, min(frame.origin.x, vf.maxX - sz.width - 8))
         }
         window.setFrame(frame, display: true, animate: false)
-        NSLog("[VS] applySize mode=\(mode) -> \(Int(sz.width))x\(Int(sz.height)) actualFrame=\(Int(window.frame.width))x\(Int(window.frame.height))")
     }
 
     private func showWindow() {
@@ -222,7 +220,7 @@ final class AppController: NSObject, NSApplicationDelegate {
                               action: #selector(openNotesFolder), keyEquivalent: "")
         open.target = self; menu.addItem(open)
         menu.addItem(.separator())
-        menu.addItem(NSMenuItem(title: "Quit Hamilton Voice",
+        menu.addItem(NSMenuItem(title: "Quit Voice Snippet",
                                 action: #selector(NSApp.terminate(_:)), keyEquivalent: "q"))
         statusItem.menu = menu
         statusItem.button?.performClick(nil)

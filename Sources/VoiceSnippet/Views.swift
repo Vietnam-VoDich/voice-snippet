@@ -1,15 +1,12 @@
 import AppKit
 import SwiftUI
 
-// Hamilton brand blue
 extension Color {
-    static let hamiltonBlue = Color(red: 0.20, green: 0.45, blue: 0.90)
-    static let hamiltonLight = Color(red: 0.93, green: 0.96, blue: 1.0)
+    static let accent = Color(red: 0.20, green: 0.45, blue: 0.90)
 }
 
-// MARK: - Window drag handle
 // Transparent area that lets the user drag the window.
-// Use as .background() on a region — buttons on top still receive clicks.
+// Use as `.background(WindowDragHandle())` — buttons drawn on top still receive clicks.
 struct WindowDragHandle: NSViewRepresentable {
     func makeNSView(context: Context) -> NSView { DragNSView() }
     func updateNSView(_ nsView: NSView, context: Context) {}
@@ -19,7 +16,6 @@ struct WindowDragHandle: NSViewRepresentable {
             window?.performDrag(with: event)
         }
         override func hitTest(_ point: NSPoint) -> NSView? {
-            // Only consume hits inside our bounds — foreground views still take precedence.
             bounds.contains(point) ? self : nil
         }
     }
@@ -142,9 +138,9 @@ struct MiniPill: View {
             Button { state.viewMode = .tabbed } label: {
                 Image(systemName: "chevron.up")
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(.hamiltonBlue)
+                    .foregroundColor(.accent)
                     .frame(width: 28, height: 28)
-                    .background(Circle().fill(Color.hamiltonBlue.opacity(0.12)))
+                    .background(Circle().fill(Color.accent.opacity(0.12)))
             }
             .buttonStyle(.plain)
             .help("Expand to full view")
@@ -166,7 +162,7 @@ struct MiniPill: View {
                             .lineLimit(1)
                             .foregroundColor(.primary)
                     } else {
-                        Text("Hamilton Voice")
+                        Text("Voice Snippet")
                             .font(.system(size: 12, weight: .medium))
                             .foregroundColor(.secondary)
                     }
@@ -179,7 +175,7 @@ struct MiniPill: View {
             Button(action: actions.toggleRecord) {
                 ZStack {
                     Circle()
-                        .fill(isRecording ? Color.red.gradient : Color.hamiltonBlue.gradient)
+                        .fill(isRecording ? Color.red.gradient : Color.accent.gradient)
                         .frame(width: 36, height: 36)
                     Image(systemName: isRecording ? "stop.fill" : "mic.fill")
                         .font(.system(size: 14, weight: .semibold))
@@ -214,10 +210,10 @@ struct TabbedView: View {
                         Text("Mini")
                             .font(.system(size: 11, weight: .medium))
                     }
-                    .foregroundColor(.hamiltonBlue)
+                    .foregroundColor(.accent)
                     .padding(.horizontal, 8).padding(.vertical, 4)
                     .background(RoundedRectangle(cornerRadius: 6)
-                        .fill(Color.hamiltonBlue.opacity(0.1)))
+                        .fill(Color.accent.opacity(0.1)))
                 }
                 .buttonStyle(.plain)
                 .help("Fold to mini widget")
@@ -261,7 +257,7 @@ struct TabbedView: View {
                             Text(tab.label)
                                 .font(.system(size: 10))
                         }
-                        .foregroundColor(state.selectedTab == tab ? .hamiltonBlue : .secondary)
+                        .foregroundColor(state.selectedTab == tab ? .accent : .secondary)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 8)
                         .contentShape(Rectangle())
@@ -330,9 +326,9 @@ struct RecordTab: View {
                             Button(action: actions.toggleRecord) {
                                 ZStack {
                                     Circle()
-                                        .fill(isRecording ? Color.red.gradient : Color.hamiltonBlue.gradient)
+                                        .fill(isRecording ? Color.red.gradient : Color.accent.gradient)
                                         .frame(width: 56, height: 56)
-                                        .shadow(color: (isRecording ? Color.red : .hamiltonBlue).opacity(0.3),
+                                        .shadow(color: (isRecording ? Color.red : .accent).opacity(0.3),
                                                 radius: 8, y: 3)
                                     Image(systemName: isRecording ? "stop.fill" : "mic.fill")
                                         .font(.system(size: 22, weight: .semibold))
@@ -428,7 +424,7 @@ struct RecordTab: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
                 Text(label).font(.system(size: 10, weight: .semibold))
-                    .foregroundColor(accent ? .hamiltonBlue : .secondary)
+                    .foregroundColor(accent ? .accent : .secondary)
                 Spacer()
                 Button {
                     NSPasteboard.general.clearContents()
@@ -441,7 +437,7 @@ struct RecordTab: View {
                     }.font(.system(size: 10))
                 }
                 .buttonStyle(.plain)
-                .foregroundColor(accent ? .hamiltonBlue : .secondary)
+                .foregroundColor(accent ? .accent : .secondary)
             }
             Text(text)
                 .font(.system(size: 12))
@@ -450,7 +446,7 @@ struct RecordTab: View {
                 .padding(10)
                 .background(
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(accent ? Color.hamiltonBlue.opacity(0.06) : Color.primary.opacity(0.04))
+                        .fill(accent ? Color.accent.opacity(0.06) : Color.primary.opacity(0.04))
                 )
         }
     }
@@ -565,7 +561,7 @@ struct HistoryTab: View {
                     .font(.system(size: 11))
                 }
                 .buttonStyle(.plain)
-                .foregroundColor(.hamiltonBlue)
+                .foregroundColor(.accent)
             }
         }
     }
@@ -757,13 +753,13 @@ struct SettingsTab: View {
                     Label("Open voice-notes folder", systemImage: "folder")
                         .font(.system(size: 12))
                 }
-                .buttonStyle(.plain).foregroundColor(.hamiltonBlue)
+                .buttonStyle(.plain).foregroundColor(.accent)
                 Spacer()
             }
 
             Spacer()
 
-            Text("Hamilton Voice · v0.2.0")
+            Text("Voice Snippet · v0.3.0")
                 .font(.system(size: 10))
                 .foregroundStyle(.tertiary)
                 .frame(maxWidth: .infinity, alignment: .center)

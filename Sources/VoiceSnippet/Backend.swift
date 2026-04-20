@@ -8,7 +8,8 @@ enum Config {
     static let backendBase = URL(string: "http://127.0.0.1:8003")!
     static var transcribeURL: URL { backendBase.appendingPathComponent("transcribe") }
     static var formatURL: URL { backendBase.appendingPathComponent("voice-format") }
-    // ~/.analystai/voice-notes — NOT in ~/Documents (which triggers TCC prompts)
+
+    // Notes live outside ~/Documents so we don't trigger the macOS Documents-folder TCC prompt.
     static var notesDir: URL {
         FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent(".analystai/voice-notes", isDirectory: true)

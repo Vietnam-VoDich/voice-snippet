@@ -22,11 +22,6 @@ final class DictionaryStore: ObservableObject {
 
     init() { load() }
 
-    var correctionMap: [String: String] {
-        Dictionary(entries.map { ($0.term.lowercased(), $0.correctedTerm) },
-                   uniquingKeysWith: { _, last in last })
-    }
-
     var contextBlock: String {
         entries.compactMap { e in
             e.context.isEmpty ? nil : "- \(e.correctedTerm): \(e.context)"
@@ -47,13 +42,6 @@ final class DictionaryStore: ObservableObject {
     func add(_ entry: DictionaryEntry) {
         entries.append(entry)
         save()
-    }
-
-    func update(_ entry: DictionaryEntry) {
-        if let i = entries.firstIndex(where: { $0.id == entry.id }) {
-            entries[i] = entry
-            save()
-        }
     }
 
     func delete(_ entry: DictionaryEntry) {
