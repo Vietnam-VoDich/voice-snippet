@@ -4,3 +4,10 @@ DerivedData/
 *.xcodeproj
 *.xcworkspace
 .DS_Store
+
+# Build output
+dist/
+
+# Python backend venv
+.venv/
+backend/__pycache__/

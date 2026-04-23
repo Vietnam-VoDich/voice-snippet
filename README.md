@@ -24,9 +24,36 @@ Push-to-talk mode (toggle in Settings): hold `⌥W` to record, release to stop.
 
 ## Setup
 
-Three services need to be running for the app to work: **Ollama**, the **backend** (FastAPI wrapper around Ollama + mlx-whisper), and the **Voice Snippet app** itself. Follow the steps in order.
+> **Using Claude Code, Codex, Cursor, or another coding agent?** Point it at [AGENTS.md](AGENTS.md) and tell it *"set this up for me"* — that file has step-by-step instructions with verifiable checkpoints written for non-interactive agent execution.
 
-### 1. Install Ollama and pull the formatter model
+### Fast path — one script
+
+```bash
+git clone https://github.com/Vietnam-VoDich/voice-snippet.git
+cd voice-snippet
+./scripts/setup.sh
+```
+
+`setup.sh` installs Ollama (via Homebrew), pulls the `gemma3:1b` formatter model, creates a Python venv for the backend, builds the Swift app, and packages it as `dist/VoiceSnippet.app`. When it's done you start the backend in one terminal (`source .venv/bin/activate && python backend/app.py`) and launch the app with `open dist/VoiceSnippet.app`.
+
+On first launch, macOS will say "developer cannot be verified" — right-click the app in Finder → **Open** → **Open**. You only need to do this once. (The app is ad-hoc signed locally; there's no Apple Developer account involved.)
+
+To install into `/Applications`: `./scripts/make-app.sh install`.
+
+### Manual path
+
+Prefer to go step by step? Run these from the repo root.
+
+### 1. Clone the repo
+
+```bash
+git clone https://github.com/Vietnam-VoDich/voice-snippet.git
+cd voice-snippet
+```
+
+All remaining steps run from inside this directory.
+
+### 2. Install Ollama and pull the formatter model
 
 ```bash
 brew install ollama
@@ -60,22 +87,15 @@ Verify it works:
 ollama run gemma3:1b "rewrite as a tweet: hello world it is a nice day"
 ```
 
-### 2. Set up the backend
+### 3. Start the backend
 
-The backend is a small FastAPI service that wraps Ollama (for formatting) and mlx-whisper (for speech-to-text). It lives in a separate repo:
+The backend is a small FastAPI service in `backend/` that wraps Ollama (for formatting) and mlx-whisper (for speech-to-text). From the repo root:
 
 ```bash
-git clone https://github.com/your-org/analystai-local.git
-cd analystai-local
-python3 -m venv venv
-source venv/bin/activate
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r backend/requirements.txt
-```
-
-Run it on port 8003 (Voice Snippet connects here by default):
-
-```bash
-PORT=8003 python backend/app.py
+python backend/app.py
 ```
 
 You should see:
@@ -88,23 +108,22 @@ Leave this terminal open — the app needs the backend running.
 
 The Whisper model (`mlx-community/distil-whisper-large-v3`, ~1.5 GB) downloads automatically on your first recording and is cached under `~/.cache/huggingface/`. The first transcription takes ~30 seconds while it downloads; every one after that takes under 2 seconds.
 
-### 3. Build and run Voice Snippet
+### 4. Build Voice Snippet as a proper `.app`
+
+In a second terminal, from the repo root:
 
 ```bash
-git clone https://github.com/Vietnam-VoDich/voice-snippet.git
-cd voice-snippet
-swift build -c release
-.build/release/VoiceSnippet
+./scripts/make-app.sh
+open dist/VoiceSnippet.app
 ```
 
-To run it detached (so closing the terminal doesn't kill it):
+This builds a Swift release binary, generates the app icon, assembles `dist/VoiceSnippet.app`, and ad-hoc codesigns it so Gatekeeper lets it launch.
 
-```bash
-nohup .build/release/VoiceSnippet > /tmp/voice-snippet.log 2>&1 &
-disown
-```
+On first launch macOS will say "developer cannot be verified" — right-click the app in Finder → **Open** → **Open**. You only need to do this once.
 
-### 4. Grant permissions
+Want it in `/Applications`? `./scripts/make-app.sh install`.
+
+### 5. Grant permissions
 
 First launch, macOS will prompt for:
 
@@ -159,13 +178,13 @@ You can also type a custom instruction ("make it sound excited", "add emojis", e
 ## Architecture
 
 ```
-┌──────────────────┐     multipart m4a      ┌─────────────────┐
-│  Voice Snippet   │ ──────────────────────▶│  Backend :8003  │
-│ (Swift / SwiftUI)│                         │                 │
-│                  │                         │ POST /transcribe│──▶ mlx-whisper (distil-whisper-large-v3)
-│ - AVAudioRecorder│                         │                 │
-│ - Global hotkeys │                         │ POST /voice-fmt │──▶ Ollama :11434 (gemma3:1b)
-│ - Menubar icon   │                         └─────────────────┘
+┌──────────────────┐   multipart m4a    ┌────────────────────┐
+│  Voice Snippet   │ ──────────────────▶│   Backend :8003    │
+│ (Swift / SwiftUI)│                    │                    │
+│                  │                    │ POST /transcribe   │──▶ mlx-whisper (distil-whisper-large-v3)
+│ - AVAudioRecorder│                    │ POST /voice-format │──▶ Ollama :11434 (gemma3:1b)
+│ - Global hotkeys │                    └────────────────────┘
+│ - Menubar icon   │
 │ - Floating window│
 └──────────────────┘
         │
@@ -176,7 +195,7 @@ Zero network calls outside `127.0.0.1`.
 
 ## Troubleshooting
 
-**"No response from http://127.0.0.1:8003"** — the backend isn't running. Start it: `cd analystai-local && PORT=8003 python backend/app.py`. Verify with `lsof -iTCP:8003 -sTCP:LISTEN`.
+**"No response from http://127.0.0.1:8003"** — the backend isn't running. From the repo root: `source .venv/bin/activate && python backend/app.py`. Verify with `lsof -iTCP:8003 -sTCP:LISTEN`.
 
 **Formatting takes a long time on the first call** — Ollama loads the model into memory on cold start. Set `OLLAMA_KEEP_ALIVE=30m` (see step 1) and subsequent calls are instant.
 

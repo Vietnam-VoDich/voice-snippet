@@ -312,9 +312,9 @@ struct RecordTab: View {
                     if !state.lastText.isEmpty {
                         let hasFormatted = state.currentText != state.lastText && !state.currentText.isEmpty
                         VStack(alignment: .leading, spacing: 8) {
-                            transcriptCard(label: "Original", text: state.lastText, accent: false)
+                            transcriptCard(label: "Original", text: $state.lastText, accent: false)
                             if hasFormatted {
-                                transcriptCard(label: "Formatted", text: state.currentText, accent: true)
+                                transcriptCard(label: "Formatted", text: $state.currentText, accent: true)
                             }
                         }
                     }
@@ -420,7 +420,7 @@ struct RecordTab: View {
     }
 
     @ViewBuilder
-    private func transcriptCard(label: String, text: String, accent: Bool) -> some View {
+    private func transcriptCard(label: String, text: Binding<String>, accent: Bool) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
                 Text(label).font(.system(size: 10, weight: .semibold))
@@ -428,7 +428,7 @@ struct RecordTab: View {
                 Spacer()
                 Button {
                     NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(text, forType: .string)
+                    NSPasteboard.general.setString(text.wrappedValue, forType: .string)
                     state.flashCopied()
                 } label: {
                     HStack(spacing: 3) {
@@ -439,10 +439,10 @@ struct RecordTab: View {
                 .buttonStyle(.plain)
                 .foregroundColor(accent ? .accent : .secondary)
             }
-            Text(text)
+            TextField("", text: text, axis: .vertical)
+                .textFieldStyle(.plain)
                 .font(.system(size: 12))
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .textSelection(.enabled)
                 .padding(10)
                 .background(
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
