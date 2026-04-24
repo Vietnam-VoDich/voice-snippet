@@ -54,9 +54,35 @@ fi
 log "Installing backend requirements (may take a minute)"
 ./.venv/bin/pip install -q -r backend/requirements.txt
 
-# ── 4. Build and package the Swift app ────────────────────────────────────────
-log "Building VoiceSnippet.app"
-./scripts/make-app.sh
+# ── 4. Get the Swift app (download pre-built or build from source) ───────────
+DIST_APP="dist/VoiceSnippet.app"
+REPO="Vietnam-VoDich/voice-snippet"
+
+download_prebuilt() {
+    log "Downloading pre-built VoiceSnippet.app from GitHub Releases"
+    mkdir -p dist
+    LATEST_URL="https://github.com/$REPO/releases/latest/download/VoiceSnippet.app.tar.gz"
+    if curl -fSL --progress-bar "$LATEST_URL" -o /tmp/VoiceSnippet.app.tar.gz; then
+        tar -xzf /tmp/VoiceSnippet.app.tar.gz -C dist/
+        rm -f /tmp/VoiceSnippet.app.tar.gz
+        return 0
+    fi
+    return 1
+}
+
+build_from_source() {
+    log "Building VoiceSnippet.app from source (requires Swift toolchain)"
+    if ! command -v swift >/dev/null 2>&1; then
+        warn "Swift not found. Install Xcode Command Line Tools: xcode-select --install"
+        return 1
+    fi
+    ./scripts/make-app.sh
+}
+
+if ! download_prebuilt; then
+    warn "Could not download pre-built app. Trying to build from source..."
+    build_from_source
+fi
 
 # ── 5. Next steps ─────────────────────────────────────────────────────────────
 cat <<EOF

@@ -122,11 +122,26 @@ First call to `/transcribe` will download the Whisper model (`mlx-community/dist
 
 ### 3c. Swift app
 
+**Preferred: download pre-built app (no Swift toolchain needed):**
+
+```bash
+mkdir -p dist
+curl -fSL https://github.com/Vietnam-VoDich/voice-snippet/releases/latest/download/VoiceSnippet.app.tar.gz \
+  -o /tmp/VoiceSnippet.app.tar.gz
+tar -xzf /tmp/VoiceSnippet.app.tar.gz -C dist/
+rm -f /tmp/VoiceSnippet.app.tar.gz
+test -d dist/VoiceSnippet.app && echo OK
+```
+
+**Fallback: build from source (requires Xcode Command Line Tools):**
+
 ```bash
 ./scripts/make-app.sh                 # builds dist/VoiceSnippet.app
 ```
 
 This step requires the Swift toolchain (`xcode-select --install` if missing). Output goes to `.build/release/VoiceSnippet` and is packaged into `dist/VoiceSnippet.app` with an ad-hoc codesign.
+
+> **Common issue:** If `swift build` fails with "SDK is not supported by the compiler", the CLT has a version mismatch. Fix: `sudo rm -rf /Library/Developer/CommandLineTools && xcode-select --install`. Or just use the pre-built download above.
 
 ---
 

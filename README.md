@@ -27,7 +27,8 @@ No cloud. No telemetry. No API keys. The whole stack runs on `127.0.0.1`.
 - **~10 GB free disk space** — for the Whisper model (~1.5 GB), Ollama model (~750 MB), and Python deps
 - **8 GB RAM minimum**, 16 GB recommended
 - **Homebrew** — for installing Ollama (install from [brew.sh](https://brew.sh) if you don't have it)
-- **Xcode Command Line Tools** — for the Swift compiler. Run `xcode-select --install` if `swift --version` errors.
+
+> **Note:** You do **not** need Xcode or Xcode Command Line Tools for normal use. The setup script downloads a pre-built `VoiceSnippet.app` from GitHub Releases. Building from source is only needed if you're contributing code — see [Contributing](#contributing).
 
 ## Keyboard shortcuts
 
@@ -226,23 +227,35 @@ pip install huggingface_hub
 huggingface-cli download mlx-community/distil-whisper-large-v3
 ```
 
-#### 5. Build and launch the app
+#### 5. Get and launch the app
 
-In a **second terminal**, from the repo root:
+**Option A — Download pre-built (recommended, no Xcode needed):**
+
+```bash
+curl -fSL https://github.com/Vietnam-VoDich/voice-snippet/releases/latest/download/VoiceSnippet.app.tar.gz -o /tmp/VoiceSnippet.app.tar.gz
+mkdir -p dist
+tar -xzf /tmp/VoiceSnippet.app.tar.gz -C dist/
+open dist/VoiceSnippet.app
+```
+
+**Option B — Build from source (requires Xcode Command Line Tools):**
 
 ```bash
 ./scripts/make-app.sh
 open dist/VoiceSnippet.app
 ```
 
-`make-app.sh` builds a Swift release binary, generates the app icon, assembles `dist/VoiceSnippet.app`, and ad-hoc codesigns it so Gatekeeper allows launch.
+`make-app.sh` builds a Swift release binary, generates the app icon, assembles `dist/VoiceSnippet.app`, and ad-hoc codesigns it so Gatekeeper allows launch. Requires `xcode-select --install`.
 
 On first launch, macOS will say **"developer cannot be verified"**. Right-click `VoiceSnippet.app` in Finder → **Open** → **Open**. You only need to do this once.
 
 Want it in `/Applications`?
 
 ```bash
+# If you built from source:
 ./scripts/make-app.sh install
+# If you downloaded:
+cp -R dist/VoiceSnippet.app /Applications/
 ```
 
 #### 6. Grant permissions
@@ -348,6 +361,8 @@ Zero network calls outside `127.0.0.1`.
 **`brew install ollama` fails** — run `brew doctor` and fix whatever it reports. If Homebrew itself is missing, install it from [brew.sh](https://brew.sh) first.
 
 **`swift build` errors with "no such command"** — you don't have Xcode Command Line Tools. Run `xcode-select --install` and try again.
+
+**`swift build` errors with "SDK is not supported by the compiler"** — your Command Line Tools have a version mismatch between the Swift compiler and SDK (common after macOS updates). Fix by reinstalling CLT: `sudo rm -rf /Library/Developer/CommandLineTools && xcode-select --install`. Or skip building entirely and use the pre-built app from GitHub Releases.
 
 **"Operation not permitted" on mic access** — macOS blocks mic access silently if the plist is malformed. Quit the app (`pkill -x VoiceSnippet`), rebuild (`./scripts/make-app.sh`), relaunch, and accept the mic prompt when it appears.
 
