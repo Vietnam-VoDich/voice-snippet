@@ -5,10 +5,6 @@ import Foundation
 // MARK: - Config
 
 enum Config {
-    static let backendBase = URL(string: "http://127.0.0.1:8003")!
-    static var transcribeURL: URL { backendBase.appendingPathComponent("transcribe") }
-    static var formatURL: URL { backendBase.appendingPathComponent("voice-format") }
-
     // Notes live outside ~/Documents so we don't trigger the macOS Documents-folder TCC prompt.
     static var notesDir: URL {
         FileManager.default.homeDirectoryForCurrentUser
@@ -64,57 +60,6 @@ final class Recorder: NSObject, AVAudioRecorderDelegate {
     }
 }
 
-// MARK: - Backend client
-
-enum Backend {
-    static func transcribe(fileURL: URL) async throws -> String {
-        var request = URLRequest(url: Config.transcribeURL)
-        request.httpMethod = "POST"
-        request.timeoutInterval = 180  // first run downloads the Whisper model (~1.5 GB)
-        let boundary = "Boundary-\(UUID().uuidString)"
-        request.setValue("multipart/form-data; boundary=\(boundary)",
-                         forHTTPHeaderField: "Content-Type")
-        var body = Data()
-        let audio = try Data(contentsOf: fileURL)
-        body.append("--\(boundary)\r\n".data(using: .utf8)!)
-        body.append("Content-Disposition: form-data; name=\"audio\"; filename=\"audio.m4a\"\r\n"
-            .data(using: .utf8)!)
-        body.append("Content-Type: audio/mp4\r\n\r\n".data(using: .utf8)!)
-        body.append(audio)
-        body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
-        let (data, response) = try await URLSession.shared.upload(for: request, from: body)
-        try Self.check(response, body: data)
-        struct R: Decodable { let text: String }
-        return try JSONDecoder().decode(R.self, from: data).text
-    }
-
-    static func format(text: String, style: String, instruction: String?) async throws -> String {
-        var request = URLRequest(url: Config.formatURL)
-        request.httpMethod = "POST"
-        request.timeoutInterval = 120  // cold-start Ollama can take 10-30s on first call
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        var payload: [String: Any] = ["text": text, "style": style]
-        if let instruction, !instruction.isEmpty { payload["instruction"] = instruction }
-        request.httpBody = try JSONSerialization.data(withJSONObject: payload)
-        let (data, response) = try await URLSession.shared.data(for: request)
-        try Self.check(response, body: data)
-        struct R: Decodable { let text: String }
-        return try JSONDecoder().decode(R.self, from: data).text
-    }
-
-    private static func check(_ response: URLResponse, body: Data) throws {
-        guard let http = response as? HTTPURLResponse else {
-            throw NSError(domain: "Backend", code: -1,
-                          userInfo: [NSLocalizedDescriptionKey: "No response from \(Config.backendBase)"])
-        }
-        guard (200..<300).contains(http.statusCode) else {
-            let snippet = String(data: body, encoding: .utf8)?.prefix(200) ?? ""
-            throw NSError(domain: "Backend", code: http.statusCode,
-                          userInfo: [NSLocalizedDescriptionKey: "HTTP \(http.statusCode) — \(snippet)"])
-        }
-    }
-}
-
 // MARK: - Notes persistence
 
 enum Notes {
@@ -156,7 +101,7 @@ enum Notes {
                 let header = lines.first?.replacingOccurrences(of: "## ", with: "") ?? ""
                 let body = lines.dropFirst().joined(separator: "\n")
                     .trimmingCharacters(in: .whitespacesAndNewlines)
-                if body.isEmpty || body.hasPrefix("[backend unreachable") { continue }
+                if body.isEmpty { continue }
                 let date = fmt.date(from: "\(dateStr) \(header)")
                     ?? fmt.date(from: "\(dateStr) 00:00:00")
                     ?? Date()

@@ -8,13 +8,12 @@ This file tells an AI coding agent (Claude Code, Codex, Cursor, Aider, etc.) how
 
 ## 0. What you are setting up
 
-Three independent processes that must all be running for the app to work:
+A single self-contained Swift `.app`. There is no separate backend, no Python, no Ollama.
 
-1. **Ollama** on `127.0.0.1:11434` — runs the `gemma3:1b` formatter model
-2. **Backend** (FastAPI) on `127.0.0.1:8003` — wraps mlx-whisper + Ollama
-3. **VoiceSnippet.app** — the Swift/SwiftUI menubar app
+- **Speech-to-text:** WhisperKit running `distil-whisper-large-v3`, on-device, downloaded once on first use into `~/Library/Application Support/argmaxinc.WhisperKit/`.
+- **Formatter LLM:** Apple Foundation Models — built into macOS 26, no download.
 
-Everything is local. No cloud, no API keys, no network egress outside `127.0.0.1`.
+Everything runs on the user's Mac. No cloud, no API keys, no network egress except WhisperKit's one-time model download from Hugging Face.
 
 ---
 
@@ -23,53 +22,43 @@ Everything is local. No cloud, no API keys, no network egress outside `127.0.0.1
 Run these checks first. Abort with a clear message to the user if any fail.
 
 ```bash
-# Must be Apple Silicon — mlx-whisper is Apple-Silicon-only
+# Must be Apple Silicon — WhisperKit + Foundation Models are Apple-Silicon-only
 uname -m                              # expect: arm64
 
-# Must be macOS 13 or later
-sw_vers -productVersion               # expect: 13.* or higher
+# Must be macOS 26 or later — Foundation Models requires it
+sw_vers -productVersion               # expect: 26.* or higher
 
-# Must have ~10 GB free
-df -h ~ | awk 'NR==2 {print $4}'      # expect: 10G+ free
-
-# Must have Homebrew (for Ollama install)
-command -v brew                       # expect: path printed
-
-# Must have Python 3.10+
-python3 --version                     # expect: 3.10+
+# Must have ~3 GB free for the Whisper model + build artifacts
+df -h ~ | awk 'NR==2 {print $4}'      # expect: 3G+ free
 
 # Must have Swift toolchain (bundled with Xcode / Command Line Tools)
-swift --version                       # expect: Swift version printed
+swift --version                       # expect: Swift version 5.9+ printed
 ```
-
-If `brew` is missing, instruct the user to install Homebrew from `https://brew.sh` and re-run you. Do not attempt to install Homebrew yourself.
 
 If `swift` is missing, tell the user to run `xcode-select --install` and re-run you.
 
+If `sw_vers` shows macOS 25 or older, stop. Voice Snippet is built around `import FoundationModels`, which is unavailable below 26.
+
 ---
 
-## 2. Fast path (recommended)
-
-From the repo root:
+## 2. Build the app
 
 ```bash
 ./scripts/setup.sh
 ```
 
-This script is idempotent — safe to re-run. It will:
-- Install Ollama via Homebrew (if missing)
-- Start `ollama serve` in the background (if not already running)
-- Pull `gemma3:1b` (~750 MB, skipped if present)
-- Set `OLLAMA_KEEP_ALIVE=30m` via `launchctl`
-- Create `.venv/` and install backend requirements
-- Build `VoiceSnippet` in release mode and package it as `dist/VoiceSnippet.app`
+This is idempotent — safe to re-run. It will:
+- Re-check Apple Silicon + macOS 26 (in case you skipped §1)
+- Run `swift build -c release` (SwiftPM fetches WhisperKit on first build, ~5 min)
+- Generate `dist/AppIcon.icns`
+- Assemble `dist/VoiceSnippet.app` and ad-hoc codesign it
 
 **Verify it succeeded:**
 
 ```bash
-test -d .venv                         # backend venv exists
-test -d dist/VoiceSnippet.app         # app bundle exists
-curl -s http://127.0.0.1:11434/api/tags | grep -q gemma3:1b   # model pulled
+test -d dist/VoiceSnippet.app                                 # bundle exists
+test -x dist/VoiceSnippet.app/Contents/MacOS/VoiceSnippet     # executable present
+codesign -dv dist/VoiceSnippet.app 2>&1 | grep -q adhoc       # ad-hoc signed
 ```
 
 If all three pass, skip to [§4 Launch](#4-launch).
@@ -80,53 +69,25 @@ If `setup.sh` fails, fall through to the manual steps and diagnose.
 
 ## 3. Manual path (if §2 fails)
 
-### 3a. Ollama
-
 ```bash
-# Install
-command -v ollama || brew install ollama
+# Build the binary
+swift build -c release
 
-# Start server (idempotent — skip if port 11434 is already listening)
-lsof -iTCP:11434 -sTCP:LISTEN >/dev/null 2>&1 \
-  || (nohup ollama serve >/tmp/ollama.log 2>&1 & disown)
-sleep 2
+# Verify the binary
+test -x .build/release/VoiceSnippet
 
-# Pull model
-ollama pull gemma3:1b
+# Package as a .app
+./scripts/make-app.sh
 
-# Keep resident to avoid cold starts
-launchctl setenv OLLAMA_KEEP_ALIVE 30m
-
-# Verify
-curl -s http://127.0.0.1:11434/api/tags | grep -q gemma3:1b && echo OK
+# Verify the bundle
+test -d dist/VoiceSnippet.app
 ```
 
-### 3b. Backend
+Common failure modes:
 
-```bash
-# From repo root
-python3 -m venv .venv
-./.venv/bin/pip install --upgrade pip
-./.venv/bin/pip install -r backend/requirements.txt
-
-# Start backend (will block the terminal — run in background for agent flows)
-nohup ./.venv/bin/python backend/app.py >/tmp/voice-snippet-backend.log 2>&1 &
-disown
-sleep 3
-
-# Verify
-curl -s http://127.0.0.1:8003/health  # expect: {"ok":true,...}
-```
-
-First call to `/transcribe` will download the Whisper model (`mlx-community/distil-whisper-large-v3`, ~1.5 GB) to `~/.cache/huggingface/`. Warn the user this takes ~30 seconds on first recording only.
-
-### 3c. Swift app
-
-```bash
-./scripts/make-app.sh                 # builds dist/VoiceSnippet.app
-```
-
-This step requires the Swift toolchain (`xcode-select --install` if missing). Output goes to `.build/release/VoiceSnippet` and is packaged into `dist/VoiceSnippet.app` with an ad-hoc codesign.
+- **`error: the package requires a higher minimum deployment target`** — the user is on macOS 25 or older. Stop.
+- **SPM hangs fetching `argmax-oss-swift`** — network issue or HF rate-limited. Retry. If persistent, check `~/Library/Developer/Xcode/DerivedData/SourcePackages/`.
+- **`undefined symbol: ... FoundationModels ...`** — Xcode Command Line Tools are out of date. `softwareupdate --install --all` and try again.
 
 ---
 
@@ -142,26 +103,20 @@ open dist/VoiceSnippet.app
 - **Microphone** — required. User must grant in the system prompt.
 - **Accessibility** — optional, only for auto-paste. User grants via System Settings → Privacy & Security → Accessibility.
 
+**For the formatter (⌘1–⌘6) to work**, the user must have Apple Intelligence enabled: System Settings → Apple Intelligence & Siri → toggle on. Speech-to-text works without it; formatter does not.
+
 ---
 
 ## 5. Verify end-to-end
 
-Sanity-check the stack without the GUI:
+There is no HTTP API to curl anymore. End-to-end verification means launching the app and recording a snippet. Tell the user to:
 
-```bash
-# Record 2s of silence as a test audio blob
-ffmpeg -f lavfi -i anullsrc=r=16000:cl=mono -t 2 /tmp/test.m4a -y 2>/dev/null
+1. Press `⌥W`, say "test one two three", press `⌥W` again.
+2. Wait. (First time: ~30s while WhisperKit downloads weights. Subsequent: <2s.)
+3. Confirm transcript appears in the app and on the clipboard.
+4. Press `⌘1` to invoke the Clean style. Confirm reformatted text replaces the clipboard.
 
-# Hit transcribe endpoint (first call downloads the Whisper model — ~30s)
-curl -s -F "audio=@/tmp/test.m4a" http://127.0.0.1:8003/transcribe
-
-# Hit format endpoint
-curl -s -X POST http://127.0.0.1:8003/voice-format \
-  -H "Content-Type: application/json" \
-  -d '{"text":"hello world um this is a test","style":"clean"}'
-```
-
-Expect a JSON response with a `text` field from both endpoints.
+If any step hangs or errors, see §6.
 
 ---
 
@@ -170,31 +125,27 @@ Expect a JSON response with a `text` field from both endpoints.
 | Symptom | Check | Fix |
 |---|---|---|
 | `setup.sh` exits on Apple Silicon check | `uname -m` returns `x86_64` | Intel Macs are not supported. Stop. |
-| `brew install ollama` hangs | `brew doctor` | User's Homebrew is broken; ask them to repair. |
-| Port 11434 already listening but not Ollama | `lsof -iTCP:11434 -sTCP:LISTEN` | Something else is using it — ask user. |
-| Backend 502 on `/voice-format` | `curl http://127.0.0.1:11434/api/tags` | Ollama isn't running. Restart it. |
-| Backend 500 on `/transcribe` | `tail /tmp/voice-snippet-backend.log` | Usually first-run HF download; wait and retry. |
-| App exits immediately | `tail /tmp/voice-snippet.log` | Check for missing mic permission or port 8003 dead. |
+| `setup.sh` exits on macOS version check | `sw_vers -productVersion` < 26 | User must update macOS. Stop. |
+| `swift build` fails with `FoundationModels` symbol errors | `swift --version` < 6.0 | `softwareupdate --install --all`, then `xcode-select --install`. |
+| First recording hangs forever | `tail /tmp/voice-snippet.log` | WhisperKit is downloading the model (~1.5 GB). Be patient or check network. |
+| Formatter (⌘1) silently fails or returns "Apple Intelligence is off" | System Settings → Apple Intelligence & Siri | User must enable Apple Intelligence. |
+| Formatter says "Apple Intelligence model is still downloading" | macOS is fetching the FM model | Wait — this is a one-time OS-level download, separate from WhisperKit's. |
+| App exits immediately on launch | `tail /tmp/voice-snippet.log` | Usually missing mic permission. Quit, rebuild, relaunch, accept prompts. |
 | Hotkeys (`⌥Q` / `⌥W`) don't fire | Another app owns them | Edit key codes in `Sources/VoiceSnippet/Backend.swift` → `Hotkey.register()`. |
 
-**Log files to grep for errors:**
-- Backend: `/tmp/voice-snippet-backend.log`
-- Ollama: `/tmp/ollama.log`
-- App: `/tmp/voice-snippet.log`
+**Log file to grep for errors:** `/tmp/voice-snippet.log`
 
 ---
 
 ## 7. Configuration knobs
 
-Agents should not change these without asking the user. Listed here for diagnosis only.
+There are very few knobs left. Listed for diagnosis only — agents should not change these without asking the user.
 
-| Variable | Default | Effect |
+| Where | What | Effect |
 |---|---|---|
-| `OLLAMA_FAST_MODEL` | `gemma3:1b` | Formatter model. Can swap for `gemma3:4b` or `qwen2.5:3b` if user wants higher quality / slower output. |
-| `WHISPER_MODEL` | `distil-whisper-large-v3` | mlx-whisper variant. Smaller options: `whisper-tiny`, `whisper-base` (faster, less accurate). |
-| `OLLAMA_URL` | `http://127.0.0.1:11434` | Where the backend finds Ollama. |
-| `OLLAMA_KEEP_ALIVE` | unset | Set to `30m` to keep Ollama model resident and avoid cold starts. |
-| `PORT` | `8003` | Backend port. The Swift app hardcodes `8003` — do not change without updating `Sources/VoiceSnippet/Backend.swift`. |
+| `Sources/VoiceSnippet/Transcriber.swift` | `modelVariant` | Which Whisper model WhisperKit loads. Default `distil-whisper_distil-large-v3`. Other options listed at <https://huggingface.co/argmaxinc/whisperkit-coreml>. |
+| `Sources/VoiceSnippet/Formatter.swift` | `stylePrompts` | The system prompt for each formatter style. |
+| `Sources/VoiceSnippet/Formatter.swift` | `GenerationOptions(temperature: 0.2)` | Sampling temperature for Foundation Models. |
 
 ---
 
@@ -203,20 +154,19 @@ Agents should not change these without asking the user. Listed here for diagnosi
 ```
 voice-snippet/
 ├── Sources/VoiceSnippet/       Swift app (SwiftUI, menubar, hotkeys, audio capture)
-│   ├── App.swift
-│   ├── Backend.swift           HTTP client to :8003, hotkey registration
-│   ├── Views.swift             Record / History / Dictionary / Settings tabs
-│   └── ...
-├── backend/
-│   ├── app.py                  FastAPI: /transcribe, /voice-format, /health
-│   └── requirements.txt
+│   ├── main.swift              App controller, hotkey wiring, record/process loop
+│   ├── Backend.swift           Recorder, Notes persistence, Hotkey registration, Config
+│   ├── Transcriber.swift       WhisperKit wrapper — speech-to-text
+│   ├── Formatter.swift         Foundation Models wrapper — LLM rewrite styles
+│   ├── Models.swift            HistoryItem, DictionaryStore, AppState
+│   └── Views.swift             Record / History / Dictionary / Settings tabs
 ├── scripts/
-│   ├── setup.sh                One-shot installer (§2)
+│   ├── setup.sh                One-shot installer (preflight + build)
 │   ├── make-app.sh             Builds + packages dist/VoiceSnippet.app
 │   └── gen-icon.swift          Generates AppIcon.icns
-├── Info.plist                  App bundle metadata
-├── VoiceSnippet.entitlements   Sandbox exemptions (mic access, network client)
-└── Package.swift               SwiftPM manifest
+├── Info.plist                  App bundle metadata (LSMinimumSystemVersion 26.0)
+├── VoiceSnippet.entitlements   Mic + Apple Events + network client
+└── Package.swift               SwiftPM manifest — depends on argmax-oss-swift
 ```
 
 ---
@@ -224,8 +174,8 @@ voice-snippet/
 ## 9. What NOT to do
 
 - Don't `rm -rf ~/.analystai/` — this is where user voice notes and their dictionary live. Delete only with explicit confirmation.
-- Don't modify `~/.cache/huggingface/` — evicting the cache forces a 1.5 GB re-download on next use.
-- Don't change hotkey bindings or the backend port without asking.
-- Don't commit `dist/`, `.venv/`, or `.build/` — they are gitignored.
+- Don't modify `~/Library/Application Support/argmaxinc.WhisperKit/` — evicting it forces a 1.5 GB re-download on next use.
+- Don't change hotkey bindings without asking.
+- Don't commit `dist/`, `.build/`, or `.swiftpm/` — they are gitignored.
 - Don't skip Gatekeeper with `sudo spctl --master-disable`; it affects the whole system.
-- Don't create a Developer ID certificate or upload to notarization — this project is ad-hoc signed by design.
+- Don't reintroduce a Python backend or Ollama. The app was deliberately migrated off both. If you find yourself reaching for `pip install` or `brew install ollama`, stop and re-read this file.

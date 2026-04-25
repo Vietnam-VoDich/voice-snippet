@@ -281,7 +281,7 @@ final class AppController: NSObject, NSApplicationDelegate {
         state.phase = .processing
         setMenubarIcon(.processing)
         do {
-            var text = try await Backend.transcribe(fileURL: url)
+            var text = try await Transcriber.shared.transcribe(fileURL: url)
             text = state.dictionary.applyCorrections(to: text)
             state.lastText = text
             state.currentText = text
@@ -295,7 +295,7 @@ final class AppController: NSObject, NSApplicationDelegate {
         } catch {
             state.phase = .error(error.localizedDescription)
             setMenubarIcon(.idle)
-            Notes.append("[backend unreachable; audio at \(url.path)]")
+            Notes.append("[transcription failed; audio at \(url.path)]")
         }
     }
 
@@ -313,7 +313,7 @@ final class AppController: NSObject, NSApplicationDelegate {
                 if !ctx.isEmpty {
                     fullInstruction = "Context:\n\(ctx)\n\n\(fullInstruction)"
                 }
-                let formatted = try await Backend.format(
+                let formatted = try await Formatter.format(
                     text: state.lastText, style: style,
                     instruction: fullInstruction.isEmpty ? nil : fullInstruction
                 )

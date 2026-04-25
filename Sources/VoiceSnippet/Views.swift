@@ -734,15 +734,10 @@ struct SettingsTab: View {
 
             // Info
             VStack(alignment: .leading, spacing: 6) {
-                Text("Backend").font(.system(size: 11, weight: .semibold)).foregroundColor(.secondary)
-                HStack {
-                    Text(Config.backendBase.absoluteString)
-                        .font(.system(size: 11, design: .monospaced))
-                        .foregroundColor(.secondary)
-                }
-                Text("STT: distil-whisper-large-v3 (mlx-whisper)")
+                Text("Engine").font(.system(size: 11, weight: .semibold)).foregroundColor(.secondary)
+                Text("Speech: distil-whisper-large-v3 (WhisperKit, on-device)")
                     .font(.system(size: 11)).foregroundColor(.secondary)
-                Text("Format: gemma3:1b via Ollama (fast, no thinking overhead)")
+                Text("Format: Apple Foundation Models (on-device)")
                     .font(.system(size: 11)).foregroundColor(.secondary)
             }
 
@@ -759,7 +754,7 @@ struct SettingsTab: View {
 
             Spacer()
 
-            Text("Voice Snippet · v0.3.0")
+            Text("Voice Snippet · v0.4.0")
                 .font(.system(size: 10))
                 .foregroundStyle(.tertiary)
                 .frame(maxWidth: .infinity, alignment: .center)
