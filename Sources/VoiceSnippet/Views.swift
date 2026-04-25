@@ -754,7 +754,7 @@ struct SettingsTab: View {
 
             Spacer()
 
-            Text("Voice Snippet · v0.4.0")
+            Text("Voice Snippet · v2.0.0")
                 .font(.system(size: 10))
                 .foregroundStyle(.tertiary)
                 .frame(maxWidth: .infinity, alignment: .center)

@@ -31,17 +31,18 @@ sw_vers -productVersion               # expect: 26.* or higher
 # Must have ~3 GB free for the Whisper model + build artifacts
 df -h ~ | awk 'NR==2 {print $4}'      # expect: 3G+ free
 
-# Must have Swift toolchain (bundled with Xcode / Command Line Tools)
-swift --version                       # expect: Swift version 5.9+ printed
+# Swift toolchain is OPTIONAL — only needed if the prebuilt download fails.
+# `setup.sh` will pull the .app from GitHub Releases by default.
+swift --version                       # nice to have; not required
 ```
 
-If `swift` is missing, tell the user to run `xcode-select --install` and re-run you.
+If `swift` is missing AND the prebuilt download fails (e.g. no network), tell the user to run `xcode-select --install` and re-run you.
 
 If `sw_vers` shows macOS 25 or older, stop. Voice Snippet is built around `import FoundationModels`, which is unavailable below 26.
 
 ---
 
-## 2. Build the app
+## 2. Get the app
 
 ```bash
 ./scripts/setup.sh
@@ -49,9 +50,10 @@ If `sw_vers` shows macOS 25 or older, stop. Voice Snippet is built around `impor
 
 This is idempotent — safe to re-run. It will:
 - Re-check Apple Silicon + macOS 26 (in case you skipped §1)
-- Run `swift build -c release` (SwiftPM fetches WhisperKit on first build, ~5 min)
-- Generate `dist/AppIcon.icns`
-- Assemble `dist/VoiceSnippet.app` and ad-hoc codesign it
+- Try to download the latest pre-built `VoiceSnippet.app` from GitHub Releases
+- If that fails, fall back to: `swift build -c release`, generate `dist/AppIcon.icns`, assemble `dist/VoiceSnippet.app`, ad-hoc codesign
+
+The prebuilt path takes ~5 seconds. The source build path takes ~5 minutes (SwiftPM fetches WhisperKit on first build).
 
 **Verify it succeeded:**
 

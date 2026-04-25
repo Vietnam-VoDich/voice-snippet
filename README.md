@@ -23,7 +23,7 @@ No cloud. No telemetry. No API keys. No Python. No Ollama. Just one `.app`.
 - **macOS 26 or later** — Apple Foundation Models needs it
 - **Apple Intelligence enabled** — System Settings → Apple Intelligence & Siri
 - **~2 GB free disk space** — for the Whisper model on first run
-- **Xcode Command Line Tools** — for the Swift compiler. Run `xcode-select --install` if `swift --version` errors.
+- **Xcode Command Line Tools** — *only if building from source*. End users don't need this; `setup.sh` downloads a pre-built `.app` from GitHub Releases by default.
 
 That's the entire dependency list.
 
@@ -60,7 +60,9 @@ cd voice-snippet
 open dist/VoiceSnippet.app
 ```
 
-That's the whole setup. `setup.sh` checks that you're on Apple Silicon + macOS 26, then builds and packages `dist/VoiceSnippet.app`. No Python, no Ollama, no second terminal.
+That's the whole setup. `setup.sh` checks that you're on Apple Silicon + macOS 26, then downloads a pre-built `VoiceSnippet.app` from [GitHub Releases](https://github.com/Vietnam-VoDich/voice-snippet/releases). If the download fails (no network, or you want a dev build), it falls back to building from source using your Swift toolchain.
+
+No Python, no Ollama, no second terminal.
 
 On first launch macOS will say **"developer cannot be verified"** — that's because the app is ad-hoc signed locally (no Apple Developer account is involved). Right-click `VoiceSnippet.app` in Finder → **Open** → **Open**. You only need to do this once.
 

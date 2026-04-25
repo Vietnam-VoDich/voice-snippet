@@ -5,8 +5,9 @@
 #   - Speech-to-text: WhisperKit (distil-whisper-large-v3, on-device, Swift)
 #   - Formatter:      Apple Foundation Models (on-device, requires macOS 26+)
 #
-# This script just preflights the environment and builds the .app.
-# No Python, no Ollama, no second terminal.
+# By default this script downloads a pre-built VoiceSnippet.app from GitHub
+# Releases, so end-users don't need the Swift toolchain. If the download
+# fails, it falls back to building from source (Xcode CLT required).
 #
 # Run from the repo root:
 #   ./scripts/setup.sh
@@ -16,6 +17,9 @@ cd "$(dirname "$0")/.."
 
 log() { printf "\n\033[1;34m==>\033[0m %s\n" "$*"; }
 warn() { printf "\033[1;33m!! %s\033[0m\n" "$*"; }
+
+REPO="Vietnam-VoDich/voice-snippet"
+DIST_APP="dist/VoiceSnippet.app"
 
 # ── Preflight ────────────────────────────────────────────────────────────────
 if [[ "$(uname -m)" != "arm64" ]]; then
@@ -29,14 +33,32 @@ if (( macos_major < 26 )); then
     exit 1
 fi
 
-if ! command -v swift >/dev/null 2>&1; then
-    warn "Swift toolchain missing. Run: xcode-select --install"
-    exit 1
-fi
+# ── Get the .app: try prebuilt download, fall back to source ─────────────────
+download_prebuilt() {
+    log "Downloading pre-built VoiceSnippet.app from GitHub Releases"
+    mkdir -p dist
+    LATEST_URL="https://github.com/$REPO/releases/latest/download/VoiceSnippet.app.tar.gz"
+    if curl -fSL --progress-bar "$LATEST_URL" -o /tmp/VoiceSnippet.app.tar.gz; then
+        tar -xzf /tmp/VoiceSnippet.app.tar.gz -C dist/
+        rm -f /tmp/VoiceSnippet.app.tar.gz
+        return 0
+    fi
+    return 1
+}
 
-# ── Build the Swift app ──────────────────────────────────────────────────────
-log "Building VoiceSnippet.app"
-./scripts/make-app.sh
+build_from_source() {
+    log "Building VoiceSnippet.app from source (requires Swift toolchain)"
+    if ! command -v swift >/dev/null 2>&1; then
+        warn "Swift not found. Install Xcode Command Line Tools: xcode-select --install"
+        return 1
+    fi
+    ./scripts/make-app.sh
+}
+
+if ! download_prebuilt; then
+    warn "Could not download pre-built app. Trying to build from source..."
+    build_from_source
+fi
 
 # ── Next steps ───────────────────────────────────────────────────────────────
 cat <<EOF
