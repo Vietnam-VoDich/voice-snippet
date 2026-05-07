@@ -11,3 +11,11 @@ dist/
 # Python backend venv
 .venv/
 backend/__pycache__/
+
+# Signing / notarization secrets — never commit
+*.cer
+*.certSigningRequest
+*.p12
+.env
+.env.local
+RELEASE_COMMANDS.txt
