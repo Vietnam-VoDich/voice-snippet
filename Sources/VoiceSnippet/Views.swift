@@ -107,9 +107,200 @@ struct RootView: View {
     var actions: AppActions
 
     var body: some View {
-        switch state.viewMode {
-        case .mini: MiniPill(state: state, actions: actions)
-        case .tabbed: TabbedView(state: state, actions: actions)
+        if !state.hasOnboarded {
+            OnboardingView(state: state, actions: actions)
+        } else {
+            switch state.viewMode {
+            case .mini: MiniPill(state: state, actions: actions)
+            case .tabbed: TabbedView(state: state, actions: actions)
+            }
+        }
+    }
+}
+
+// MARK: - Onboarding
+
+struct OnboardingView: View {
+    @ObservedObject var state: AppState
+    var actions: AppActions
+    @State private var page: Int = 0
+    private let totalPages = 3
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Group {
+                switch page {
+                case 0: welcomePage
+                case 1: hotkeysPage
+                default: privacyPage
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding(.horizontal, 28)
+            .padding(.top, 36)
+
+            VStack(spacing: 14) {
+                HStack(spacing: 6) {
+                    ForEach(0..<totalPages, id: \.self) { i in
+                        Circle()
+                            .fill(i == page ? Color.accent : Color.secondary.opacity(0.3))
+                            .frame(width: 6, height: 6)
+                    }
+                }
+
+                Button(action: advance) {
+                    Text(page == totalPages - 1 ? "Get started" : "Continue")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 11)
+                        .background(Color.accent.gradient,
+                                    in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                }
+                .buttonStyle(.plain)
+
+                if page > 0 {
+                    Button("Back") {
+                        withAnimation(.easeInOut(duration: 0.18)) { page -= 1 }
+                    }
+                    .buttonStyle(.plain)
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                }
+            }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 22)
+        }
+    }
+
+    private func advance() {
+        if page < totalPages - 1 {
+            withAnimation(.easeInOut(duration: 0.18)) { page += 1 }
+        } else {
+            state.hasOnboarded = true
+        }
+    }
+
+    private var welcomePage: some View {
+        VStack(spacing: 14) {
+            ZStack {
+                Circle().fill(Color.accent.gradient).frame(width: 76, height: 76)
+                Image(systemName: "mic.fill")
+                    .font(.system(size: 32, weight: .semibold))
+                    .foregroundStyle(.white)
+            }
+            .padding(.top, 8)
+            .shadow(color: Color.accent.opacity(0.3), radius: 12, y: 4)
+
+            Text("Welcome to Voice Snippet")
+                .font(.system(size: 20, weight: .semibold))
+
+            Text("Hold a hotkey, talk, get clean text — pasted into any app.")
+                .font(.system(size: 13))
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 8)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private var hotkeysPage: some View {
+        VStack(spacing: 16) {
+            Text("Two shortcuts to remember")
+                .font(.system(size: 18, weight: .semibold))
+                .padding(.top, 8)
+
+            VStack(spacing: 10) {
+                onboardKeyRow(keys: ["⌥", "W"], title: "Record",
+                              detail: "Press once to start. Press again to stop and transcribe.")
+                onboardKeyRow(keys: ["⌥", "Q"], title: "Show / hide window",
+                              detail: "Toggle Voice Snippet on top of any app.")
+            }
+
+            Text("Works best in English. After transcribing, your text is auto-pasted into whatever app you were just using.")
+                .font(.system(size: 11))
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.top, 4)
+                .padding(.horizontal, 4)
+        }
+    }
+
+    private func onboardKeyRow(keys: [String], title: String, detail: String) -> some View {
+        HStack(spacing: 12) {
+            HStack(spacing: 4) {
+                ForEach(keys, id: \.self) { k in
+                    Text(k)
+                        .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                        .frame(minWidth: 24, minHeight: 24)
+                        .padding(.horizontal, 6)
+                        .background(
+                            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                .fill(Color.secondary.opacity(0.12))
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                .stroke(Color.secondary.opacity(0.25), lineWidth: 1)
+                        )
+                }
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(.system(size: 13, weight: .semibold))
+                Text(detail).font(.system(size: 11)).foregroundColor(.secondary)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(Color.secondary.opacity(0.06))
+        )
+    }
+
+    private var privacyPage: some View {
+        VStack(spacing: 14) {
+            Image(systemName: "lock.shield.fill")
+                .font(.system(size: 36))
+                .foregroundStyle(Color.accent.gradient)
+                .padding(.top, 4)
+
+            Text("Private by design")
+                .font(.system(size: 18, weight: .semibold))
+
+            VStack(alignment: .leading, spacing: 8) {
+                privacyBullet("Audio is transcribed on-device with WhisperKit.")
+                privacyBullet("Text is rewritten on-device with Apple Foundation Models.")
+                privacyBullet("Nothing is sent to any server, ever.")
+            }
+            .padding(.horizontal, 6)
+
+            Button(action: actions.openFolder) {
+                HStack(spacing: 6) {
+                    Image(systemName: "folder")
+                    Text("Open voice-notes folder")
+                }
+                .font(.system(size: 12, weight: .medium))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(Color.secondary.opacity(0.10))
+                )
+            }
+            .buttonStyle(.plain)
+            .help("~/.analystai/voice-notes")
+        }
+    }
+
+    private func privacyBullet(_ text: String) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "checkmark.circle.fill")
+                .foregroundStyle(Color.accent.gradient)
+                .font(.system(size: 12))
+                .padding(.top, 2)
+            Text(text)
+                .font(.system(size: 12))
+                .foregroundColor(.primary)
         }
     }
 }

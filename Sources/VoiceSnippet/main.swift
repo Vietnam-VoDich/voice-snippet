@@ -77,6 +77,9 @@ final class AppController: NSObject, NSApplicationDelegate {
             .sink { [weak self] newMode in self?.applySize(for: newMode) }
             .store(in: &cancellables)
 
+        if !state.hasOnboarded {
+            state.viewMode = .tabbed
+        }
         applySize(for: state.viewMode)
         showWindow()
 

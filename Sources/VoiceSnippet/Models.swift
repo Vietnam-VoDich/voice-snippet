@@ -117,6 +117,10 @@ final class AppState: ObservableObject {
         didSet { UserDefaults.standard.set(pushToTalk, forKey: "pushToTalk") }
     }
 
+    @Published var hasOnboarded: Bool = UserDefaults.standard.bool(forKey: "hasOnboarded") {
+        didSet { UserDefaults.standard.set(hasOnboarded, forKey: "hasOnboarded") }
+    }
+
     let dictionary = DictionaryStore()
 
     init() {
