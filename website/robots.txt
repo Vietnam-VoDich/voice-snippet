@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://vietnam-vodich.github.io/voice-snippet/sitemap.xml
+Sitemap: https://website-three-sandy-83.vercel.app/sitemap.xml

@@ -13,7 +13,7 @@ Recommended launch assets:
 - The hero uses `assets/voice-snippet-demo.mp4`, with the original `.mov` retained beside it.
 - Replace `assets/voice-snippet-mini.png` with a fresh screenshot after the final hotkey defaults are settled.
 - Keep the GitHub release link pointed at `https://github.com/Vietnam-VoDich/voice-snippet/releases/latest`.
-- If deployed somewhere other than GitHub Pages, update the canonical URL, Open Graph URLs, `robots.txt`, `sitemap.xml`, and `site.webmanifest` from `https://vietnam-vodich.github.io/voice-snippet/` to the final public URL.
+- Current deployed URL: `https://website-three-sandy-83.vercel.app/`. If this moves to a custom domain, update the canonical URL, Open Graph URLs, `robots.txt`, `sitemap.xml`, and `site.webmanifest`.
 
 Demo recording outline:
 
