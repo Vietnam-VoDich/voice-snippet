@@ -323,6 +323,10 @@ struct MiniPill: View {
         if case .recording = state.phase { return true }; return false
     }
 
+    private var isProcessing: Bool {
+        if case .processing = state.phase { return true }; return false
+    }
+
     var body: some View {
         HStack(spacing: 10) {
             // Expand button
@@ -347,6 +351,17 @@ struct MiniPill: View {
                                 .font(.system(size: 12, weight: .medium))
                             LevelMeter(level: state.inputLevel).frame(width: 60)
                         }
+                    } else if isProcessing {
+                        HStack(spacing: 7) {
+                            ProgressView()
+                                .controlSize(.small)
+                                .scaleEffect(0.62)
+                            Text("Transcribing…")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(.orange)
+                            ProcessingDots()
+                                .frame(width: 34, height: 10)
+                        }
                     } else if !state.lastText.isEmpty {
                         Text(state.currentText)
                             .font(.system(size: 12))
@@ -366,14 +381,15 @@ struct MiniPill: View {
             Button(action: actions.toggleRecord) {
                 ZStack {
                     Circle()
-                        .fill(isRecording ? Color.red.gradient : Color.accent.gradient)
+                        .fill(isRecording ? Color.red.gradient : (isProcessing ? Color.orange.gradient : Color.accent.gradient))
                         .frame(width: 36, height: 36)
-                    Image(systemName: isRecording ? "stop.fill" : "mic.fill")
+                    Image(systemName: isRecording ? "stop.fill" : (isProcessing ? "waveform" : "mic.fill"))
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(.white)
                 }
             }
             .buttonStyle(.plain)
+            .disabled(isProcessing)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
@@ -381,6 +397,22 @@ struct MiniPill: View {
 
     private func formatTime(_ s: Int) -> String {
         String(format: "%d:%02d", s / 60, s % 60)
+    }
+}
+
+struct ProcessingDots: View {
+    var body: some View {
+        TimelineView(.animation) { context in
+            let step = Int(context.date.timeIntervalSinceReferenceDate * 4) % 3
+            HStack(spacing: 4) {
+                ForEach(0..<3, id: \.self) { index in
+                    Circle()
+                        .fill(Color.orange.opacity(index == step ? 1 : 0.28))
+                        .frame(width: index == step ? 6 : 4, height: index == step ? 6 : 4)
+                        .animation(.easeInOut(duration: 0.18), value: step)
+                }
+            }
+        }
     }
 }
 
@@ -477,6 +509,10 @@ struct RecordTab: View {
         if case .recording = state.phase { return true }; return false
     }
 
+    private var isProcessing: Bool {
+        if case .processing = state.phase { return true }; return false
+    }
+
     var body: some View {
         ZStack {
             ScrollView(.vertical, showsIndicators: false) {
@@ -486,6 +522,13 @@ struct RecordTab: View {
                     HStack(spacing: 6) {
                         Circle().fill(dotColor).frame(width: 8, height: 8)
                         Text(statusText).font(.system(size: 12, weight: .medium))
+                        if isProcessing {
+                            ProgressView()
+                                .controlSize(.small)
+                                .scaleEffect(0.65)
+                            ProcessingDots()
+                                .frame(width: 34, height: 10)
+                        }
                         if isRecording {
                             Text(formatTime(state.recordingSeconds))
                                 .font(.system(size: 11, design: .monospaced))
@@ -517,17 +560,18 @@ struct RecordTab: View {
                             Button(action: actions.toggleRecord) {
                                 ZStack {
                                     Circle()
-                                        .fill(isRecording ? Color.red.gradient : Color.accent.gradient)
+                                        .fill(isRecording ? Color.red.gradient : (isProcessing ? Color.orange.gradient : Color.accent.gradient))
                                         .frame(width: 56, height: 56)
-                                        .shadow(color: (isRecording ? Color.red : .accent).opacity(0.3),
+                                        .shadow(color: (isRecording ? Color.red : (isProcessing ? Color.orange : .accent)).opacity(0.3),
                                                 radius: 8, y: 3)
-                                    Image(systemName: isRecording ? "stop.fill" : "mic.fill")
+                                    Image(systemName: isRecording ? "stop.fill" : (isProcessing ? "waveform" : "mic.fill"))
                                         .font(.system(size: 22, weight: .semibold))
                                         .foregroundStyle(.white)
                                 }
                             }
                             .buttonStyle(.plain)
-                            Text(isRecording ? "Tap to stop" : (state.lastText.isEmpty ? "Tap to record" : "New recording"))
+                            .disabled(isProcessing)
+                            Text(isProcessing ? "Transcribing" : (isRecording ? "Tap to stop" : (state.lastText.isEmpty ? "Tap to record" : "New recording")))
                                 .font(.system(size: 10))
                                 .foregroundColor(.secondary)
                         }
@@ -896,7 +940,7 @@ struct SettingsTab: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text("Keyboard shortcuts").font(.system(size: 11, weight: .semibold)).foregroundColor(.secondary)
                 HStack(spacing: 8) {
-                    Text("⌥Q")
+                    Text("⌘Q")
                         .font(.system(size: 13, weight: .medium, design: .monospaced))
                         .padding(.horizontal, 10).padding(.vertical, 5)
                         .background(RoundedRectangle(cornerRadius: 6).fill(Color.primary.opacity(0.05)))
@@ -904,7 +948,7 @@ struct SettingsTab: View {
                         .font(.system(size: 11)).foregroundColor(.secondary)
                 }
                 HStack(spacing: 8) {
-                    Text("⌥W")
+                    Text("⌘W")
                         .font(.system(size: 13, weight: .medium, design: .monospaced))
                         .padding(.horizontal, 10).padding(.vertical, 5)
                         .background(RoundedRectangle(cornerRadius: 6).fill(Color.primary.opacity(0.05)))
@@ -918,7 +962,7 @@ struct SettingsTab: View {
             // Toggles
             Toggle("Auto-paste into frontmost app", isOn: $state.autoPaste)
                 .font(.system(size: 12))
-            Toggle("Push-to-talk (hold ⌥W)", isOn: $state.pushToTalk)
+            Toggle("Push-to-talk (hold ⌘W)", isOn: $state.pushToTalk)
                 .font(.system(size: 12))
 
             Divider().opacity(0.3)

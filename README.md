@@ -10,9 +10,9 @@ Two modes:
 
 ## What it does
 
-1. You press `⌥W` anywhere on your Mac.
+1. You press `⌘W` anywhere on your Mac.
 2. Voice Snippet starts recording from your mic.
-3. You press `⌥W` again (or release it, in push-to-talk mode) to stop.
+3. You press `⌘W` again (or release it, in push-to-talk mode) to stop.
 4. The audio is transcribed on-device by **WhisperKit** running `distil-whisper-large-v3`.
 5. The raw transcript is copied to your clipboard immediately.
 6. If you want, click a style (or hit `⌘1`–`⌘6`) and the transcript is rewritten by **Apple Foundation Models** (the on-device LLM that powers Apple Intelligence) — cleaned up, bulleted, as an email, etc. The result replaces the clipboard.
@@ -48,7 +48,7 @@ The first time you record, macOS will prompt for:
 
 ### What happens on first use
 
-The very first time you press `⌥W`, WhisperKit downloads the `distil-whisper-large-v3` weights (~1.5 GB) into `~/Library/Application Support/argmaxinc.WhisperKit/`. The first transcription takes ~30 seconds; every one after that takes under 2 seconds.
+The very first time you press `⌘W`, WhisperKit downloads the `distil-whisper-large-v3` weights (~1.5 GB) into `~/Library/Application Support/argmaxinc.WhisperKit/`. The first transcription takes ~30 seconds; every one after that takes under 2 seconds.
 
 The first time you press `⌘1`–`⌘6`, Foundation Models warms up on-device. No download — Apple ships the model with macOS.
 
@@ -56,10 +56,10 @@ The first time you press `⌘1`–`⌘6`, Foundation Models warms up on-device. 
 
 | Shortcut | Action |
 |---|---|
-| `⌥Q` | Show / hide the window |
-| `⌥W` | Record now — start / stop recording (auto-shows window if hidden) |
+| `⌘Q` | Show / hide the window |
+| `⌘W` | Record now — start / stop recording (auto-shows window if hidden) |
 
-Push-to-talk mode (toggle in Settings): hold `⌥W` to record, release to stop.
+Push-to-talk mode (toggle in Settings): hold `⌘W` to record, release to stop.
 
 Once a transcript appears:
 
@@ -75,7 +75,7 @@ Once a transcript appears:
 ## Daily use
 
 1. Launch `VoiceSnippet.app` (or leave it running — it lives in the menubar).
-2. Anywhere on your Mac, press `⌥W` to start recording, press `⌥W` again to stop.
+2. Anywhere on your Mac, press `⌘W` to start recording, press `⌘W` again to stop.
 3. The raw transcript is on your clipboard. Click a style (or hit `⌘1`–`⌘6`) to reformat.
 
 That's it.
@@ -144,7 +144,7 @@ You can also type a custom instruction ("make it sound excited", "add emojis", e
 │                                                  ▼             │
 │                                      NSPasteboard + auto-paste │
 │                                                                │
-│   Global hotkeys (⌥Q, ⌥W)  •  Menubar icon  •  Floating window │
+│   Global hotkeys (⌘Q, ⌘W)  •  Menubar icon  •  Floating window │
 └────────────────────────────────────────────────────────────────┘
 ```
 
@@ -177,7 +177,7 @@ For a full notarized release (requires Apple Developer credentials):
 
 **First recording takes 30+ seconds** — WhisperKit is downloading the model (~1.5 GB) from Hugging Face. Only happens once. Subsequent transcriptions are sub-2-second.
 
-**Hotkeys don't fire** — another app has claimed `⌥Q` or `⌥W`. Quit the other app, or edit the key codes in `Sources/VoiceSnippet/Backend.swift` → `Hotkey.register()`.
+**Hotkeys don't fire** — another app has claimed `⌘Q` or `⌘W`. Quit the other app, or edit the key codes in `Sources/VoiceSnippet/Backend.swift` → `Hotkey.register()`.
 
 **Window stuck off-screen** — quit (`pkill -x VoiceSnippet`) and relaunch. The window repositions itself on launch.
 

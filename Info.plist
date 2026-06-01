@@ -30,5 +30,7 @@
     <string>Voice Snippet records your voice and transcribes it on-device. Audio never leaves your Mac.</string>
     <key>NSAppleEventsUsageDescription</key>
     <string>Voice Snippet pastes transcribed text into the frontmost app.</string>
+    <key>NSInputMonitoringUsageDescription</key>
+    <string>Voice Snippet listens for your global keyboard shortcuts so Command-Q can open the popover and Command-W can start or stop recording.</string>
 </dict>
 </plist>

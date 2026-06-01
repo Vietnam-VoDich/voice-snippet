@@ -120,6 +120,71 @@ final class Hotkey {
     var onPress: [UInt32: Handler] = [:]
     var onRelease: [UInt32: Handler] = [:]
     private var refs: [EventHotKeyRef?] = []
+    private var tap: CFMachPort?
+    private var runLoopSource: CFRunLoopSource?
+
+    private func installEventTap() {
+        if !CGPreflightListenEventAccess() {
+            NSLog("[VoiceSnippet] requesting Input Monitoring permission")
+            _ = CGRequestListenEventAccess()
+        }
+
+        let mask: CGEventMask = (1 << CGEventType.keyDown.rawValue) | (1 << CGEventType.keyUp.rawValue)
+        let callback: CGEventTapCallBack = { _, type, event, ctx in
+            guard let ctx = ctx else { return Unmanaged.passUnretained(event) }
+            let me = Unmanaged<Hotkey>.fromOpaque(ctx).takeUnretainedValue()
+            let flags = event.flags
+            let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
+            let optionDown = flags.contains(.maskAlternate)
+            let cmdDown = flags.contains(.maskCommand)
+            let ctrlDown = flags.contains(.maskControl)
+            let shiftDown = flags.contains(.maskShift)
+            // Match exactly ⌥ alone (no other modifiers) + Q or W
+            if optionDown && !cmdDown && !ctrlDown && !shiftDown {
+                let isQ = keyCode == Int64(kVK_ANSI_Q)
+                let isW = keyCode == Int64(kVK_ANSI_W)
+                if isQ || isW {
+                    if type == .keyDown {
+                        let id: UInt32 = isQ ? 1 : 2
+                        let line = "\(Date()) tap event id=\(id) keyDown\n"
+                        if let data = line.data(using: .utf8) {
+                            if let fh = try? FileHandle(forWritingTo: URL(fileURLWithPath: "/tmp/voicesnippet-hotkey.log")) {
+                                fh.seekToEndOfFile(); fh.write(data); try? fh.close()
+                            } else {
+                                try? data.write(to: URL(fileURLWithPath: "/tmp/voicesnippet-hotkey.log"))
+                            }
+                        }
+                        DispatchQueue.main.async { me.onPress[id]?() }
+                    } else if type == .keyUp {
+                        let id: UInt32 = isQ ? 1 : 2
+                        DispatchQueue.main.async { me.onRelease[id]?() }
+                    }
+                    // Swallow the event so macOS doesn't type œ / ∑
+                    return nil
+                }
+            }
+            return Unmanaged.passUnretained(event)
+        }
+        guard let port = CGEvent.tapCreate(
+            tap: .cgSessionEventTap,
+            place: .headInsertEventTap,
+            options: .defaultTap,
+            eventsOfInterest: mask,
+            callback: callback,
+            userInfo: Unmanaged.passUnretained(self).toOpaque()
+        ) else {
+            NSLog("[VoiceSnippet] CGEvent.tapCreate FAILED — Accessibility perm missing?")
+            try? "tapCreate FAILED at \(Date())\n".data(using: .utf8)?.write(to: URL(fileURLWithPath: "/tmp/voicesnippet-tap-status.log"))
+            return
+        }
+        try? "tapCreate OK at \(Date())\n".data(using: .utf8)?.write(to: URL(fileURLWithPath: "/tmp/voicesnippet-tap-status.log"))
+        self.tap = port
+        let src = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, port, 0)
+        self.runLoopSource = src
+        CFRunLoopAddSource(CFRunLoopGetMain(), src, .commonModes)
+        CGEvent.tapEnable(tap: port, enable: true)
+        NSLog("[VoiceSnippet] CGEventTap installed for legacy Option-Q and Option-W")
+    }
 
     func register() {
         let sig: FourCharCode = 0x56534E50
@@ -136,23 +201,33 @@ final class Hotkey {
                               EventParamType(typeEventHotKeyID), nil,
                               MemoryLayout<EventHotKeyID>.size, nil, &hkID)
             let kind = GetEventKind(event)
+            let line = "\(Date()) hotkey event id=\(hkID.id) kind=\(kind)\n"
+            if let data = line.data(using: .utf8) {
+                if let fh = try? FileHandle(forWritingTo: URL(fileURLWithPath: "/tmp/voicesnippet-hotkey.log")) {
+                    fh.seekToEndOfFile(); fh.write(data); try? fh.close()
+                } else {
+                    try? data.write(to: URL(fileURLWithPath: "/tmp/voicesnippet-hotkey.log"))
+                }
+            }
             if kind == UInt32(kEventHotKeyPressed) { me.onPress[hkID.id]?() }
             else if kind == UInt32(kEventHotKeyReleased) { me.onRelease[hkID.id]?() }
             return noErr
         }, 2, &specs, Unmanaged.passUnretained(self).toOpaque(), nil)
 
-        // ⌥Q — show / hide window
+        // ⌘Q — show / hide window.
         var ref1: EventHotKeyRef?
-        RegisterEventHotKey(UInt32(kVK_ANSI_Q), UInt32(optionKey),
+        let s1 = RegisterEventHotKey(UInt32(kVK_ANSI_Q), UInt32(cmdKey),
                             EventHotKeyID(signature: sig, id: 1),
                             GetApplicationEventTarget(), 0, &ref1)
+        NSLog("[VoiceSnippet] register ⌘Q -> OSStatus=%d ref=%@", s1, ref1 == nil ? "nil" : "ok")
         refs.append(ref1)
 
-        // ⌥W — start / stop recording (show window if hidden)
+        // ⌘W — start / stop recording (show window if hidden)
         var ref2: EventHotKeyRef?
-        RegisterEventHotKey(UInt32(kVK_ANSI_W), UInt32(optionKey),
+        let s2 = RegisterEventHotKey(UInt32(kVK_ANSI_W), UInt32(cmdKey),
                             EventHotKeyID(signature: sig, id: 2),
                             GetApplicationEventTarget(), 0, &ref2)
+        NSLog("[VoiceSnippet] register ⌘W -> OSStatus=%d ref=%@", s2, ref2 == nil ? "nil" : "ok")
         refs.append(ref2)
     }
 }

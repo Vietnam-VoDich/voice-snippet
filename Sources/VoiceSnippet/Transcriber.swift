@@ -19,7 +19,7 @@ actor Transcriber {
         return text.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    /// Kick off model load eagerly so the first ⌥W doesn't block on a 1.5 GB download.
+    /// Kick off model load eagerly so the first recording doesn't block on a 1.5 GB download.
     func preload() {
         Task { _ = try? await ensureLoaded() }
     }
@@ -28,14 +28,24 @@ actor Transcriber {
         if let pipeline { return pipeline }
         if let loadTask { return try await loadTask.value }
         let task = Task<WhisperKit, Error> {
+            let home = FileManager.default.homeDirectoryForCurrentUser
+            let localModel = home
+                .appendingPathComponent("Documents/huggingface/models/argmaxinc/whisperkit-coreml")
+                .appendingPathComponent(modelVariant)
+            let localTokenizer = home
+                .appendingPathComponent("Documents/huggingface/models/openai/whisper-large-v3")
+            let hasLocal = FileManager.default.fileExists(atPath: localModel.appendingPathComponent("AudioEncoder.mlmodelc").path)
+                && FileManager.default.fileExists(atPath: localTokenizer.appendingPathComponent("tokenizer.json").path)
             let config = WhisperKitConfig(
                 model: modelVariant,
                 modelRepo: modelRepo,
+                modelFolder: hasLocal ? localModel.path : nil,
+                tokenizerFolder: hasLocal ? localTokenizer : nil,
                 verbose: false,
                 logLevel: .error,
                 prewarm: true,
                 load: true,
-                download: true
+                download: !hasLocal
             )
             return try await WhisperKit(config)
         }

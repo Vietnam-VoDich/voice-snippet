@@ -83,10 +83,10 @@ final class AppController: NSObject, NSApplicationDelegate {
         applySize(for: state.viewMode)
         showWindow()
 
-        // ⌥Q — toggle show / hide window
+        // ⌘Q — toggle show / hide window
         hotkey.onPress[1] = { [weak self] in self?.openAndToggle() }
 
-        // ⌥W — record now (show if hidden, start/stop recording). Also handles push-to-talk.
+        // ⌘W — record now (show if hidden, start/stop recording). Also handles push-to-talk.
         hotkey.onPress[2] = { [weak self] in
             guard let self else { return }
             if self.state.pushToTalk {
@@ -214,7 +214,7 @@ final class AppController: NSObject, NSApplicationDelegate {
                                action: #selector(toggleAutoPaste), keyEquivalent: "")
         paste.target = self; paste.state = state.autoPaste ? .on : .off
         menu.addItem(paste)
-        let ptt = NSMenuItem(title: "Push-to-talk (hold ⌥W)",
+        let ptt = NSMenuItem(title: "Push-to-talk (hold ⌘W)",
                              action: #selector(togglePushToTalk), keyEquivalent: "")
         ptt.target = self; ptt.state = state.pushToTalk ? .on : .off
         menu.addItem(ptt)

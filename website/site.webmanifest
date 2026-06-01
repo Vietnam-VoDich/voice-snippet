@@ -1,0 +1,16 @@
+{
+  "name": "Voice Snippet",
+  "short_name": "Voice Snippet",
+  "description": "Local-first voice notes for Mac.",
+  "start_url": "/voice-snippet/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2563eb",
+  "icons": [
+    {
+      "src": "assets/app-icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
