@@ -1,24 +1,16 @@
-# Voice Snippet Landing Page
+# React + Vite
 
-This folder contains a static landing page for public launch.
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
-Open locally:
+Currently, two official plugins are available:
 
-```bash
-open /Users/ngaongao/Desktop/voice-snippet/website/index.html
-```
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
 
-Recommended launch assets:
+## React Compiler
 
-- The hero uses `assets/voice-snippet-demo.mp4`, with the original `.mov` retained beside it.
-- Replace `assets/voice-snippet-mini.png` with a fresh screenshot after the final hotkey defaults are settled.
-- Keep the GitHub release link pointed at `https://github.com/Vietnam-VoDich/voice-snippet/releases/latest`.
-- Current deployed URL: `https://website-three-sandy-83.vercel.app/`. If this moves to a custom domain, update the canonical URL, Open Graph URLs, `robots.txt`, `sitemap.xml`, and `site.webmanifest`.
+The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
 
-Demo recording outline:
+## Expanding the ESLint configuration
 
-1. Show the floating Voice Snippet pill over a blank note or browser page.
-2. Record one sentence: "I am sharing Voice Snippet, a local-first Mac app for turning rough voice notes into clean text."
-3. Stop recording and show the transcript appearing.
-4. Use one rewrite style, then paste the cleaned result into Notes or LinkedIn.
-5. End on the GitHub release page.
+If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
