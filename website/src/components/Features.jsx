@@ -13,16 +13,19 @@ const cardVariant = {
 const FEATURES = [
   {
     icon: Mic,
+    iconColor: 'blue',
     title: 'Record anywhere',
     desc: 'Press a global shortcut anywhere on your Mac to start recording. The floating widget stays out of your way while you work.',
   },
   {
     icon: Zap,
+    iconColor: 'green',
     title: 'Transcribe locally',
     desc: 'WhisperKit runs fully on-device. Audio never leaves your Mac, and transcriptions are lightning fast after the first run.',
   },
   {
     icon: Sparkles,
+    iconColor: 'violet',
     title: 'Clean up instantly',
     desc: 'Use on-device Apple Foundation Models to turn rough speech into clean notes, bullets, emails, or polished prose in one tap.',
   },
@@ -32,7 +35,6 @@ export default function Features() {
   return (
     <section className="section-padding" style={{ background: 'var(--soft)', borderTop: '1px solid var(--line)' }}>
       <div className="content-max">
-        {/* Section header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -41,13 +43,13 @@ export default function Features() {
           style={{ maxWidth: 800, marginBottom: 48 }}
         >
           <span className="eyebrow">Daily Flow</span>
-          <h2>Record, transcribe, polish &mdash; all on device.</h2>
-          <p style={{ fontSize: '1.05rem', color: 'var(--muted)', maxWidth: 640, lineHeight: 1.65 }}>
+          <h2>Built for the way you think.</h2>
+          <div className="section-line" />
+          <p style={{ fontSize: '1.05rem', color: 'var(--muted)', maxWidth: 640, lineHeight: 1.65, marginTop: 16 }}>
             Start from the floating widget or a global shortcut while you are writing, browsing, or moving between apps.
           </p>
         </motion.div>
 
-        {/* Feature cards */}
         <div className="grid-3">
           {FEATURES.map((f, i) => (
             <motion.article
@@ -59,7 +61,7 @@ export default function Features() {
               viewport={{ once: true, margin: '-40px' }}
               variants={cardVariant}
             >
-              <div className="card-icon">
+              <div className={`card-icon ${f.iconColor}`}>
                 <f.icon size={22} strokeWidth={2} />
               </div>
               <h3>{f.title}</h3>
@@ -77,28 +79,20 @@ export default function Features() {
           className="grid-2"
           style={{ marginTop: 64 }}
         >
-          <motion.div
-            className="demo-frame"
-            whileHover={{ scale: 1.015 }}
-            transition={{ duration: 0.3 }}
-          >
+          <div className="demo-frame">
             <img
               src="/assets/demo-mini-mode.png"
               alt="Mini mode — compact floating widget"
               loading="lazy"
             />
-          </motion.div>
-          <motion.div
-            className="demo-frame"
-            whileHover={{ scale: 1.015 }}
-            transition={{ duration: 0.3 }}
-          >
+          </div>
+          <div className="demo-frame">
             <img
               src="/assets/demo-full-mode.png"
               alt="Full mode — expanded view with history and settings"
               loading="lazy"
             />
-          </motion.div>
+          </div>
         </motion.div>
       </div>
     </section>

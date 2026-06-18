@@ -10,85 +10,94 @@ function GithubIcon({ size = 18 }) {
 }
 
 const fadeUp = (delay = 0) => ({
-  initial: { opacity: 0, y: 24 },
+  initial: { opacity: 0, y: 28 },
   animate: { opacity: 1, y: 0 },
-  transition: { duration: 0.6, delay, ease: [0.16, 1, 0.3, 1] },
+  transition: { duration: 0.65, delay, ease: [0.16, 1, 0.3, 1] },
 });
 
 export default function Hero() {
   return (
-    <section className="section-padding hero-grid" style={{ minHeight: 'auto', paddingTop: 'clamp(40px, 8vw, 100px)', paddingBottom: 'clamp(40px, 8vw, 80px)' }}>
-      {/* Text column */}
-      <div className="hero-copy">
-        <motion.div {...fadeUp(0)}>
-          <span className="eyebrow">
-            <Sparkles size={12} style={{ marginRight: 6 }} />
-            Mac App &middot; Local-First &middot; Open Source
-          </span>
-        </motion.div>
+    <section className="section-padding hero-section" style={{ minHeight: 'auto', paddingTop: 'clamp(48px, 10vw, 120px)', paddingBottom: 'clamp(40px, 8vw, 80px)' }}>
+      {/* Dot grid texture */}
+      <div className="dot-grid" />
 
-        <motion.h1 {...fadeUp(0.1)}>
-          Capture the thought before it evaporates.
-        </motion.h1>
+      <div className="hero-grid">
+        {/* Text column */}
+        <div className="hero-copy">
+          <motion.div {...fadeUp(0)}>
+            <span className="eyebrow">
+              <Sparkles size={12} style={{ marginRight: 6 }} />
+              Private &middot; Free &middot; Open Source
+            </span>
+          </motion.div>
 
-        <motion.p
-          {...fadeUp(0.2)}
-          className="hero-lede"
-          style={{ color: 'var(--muted)', fontSize: 'clamp(16px, 2vw, 19px)', marginBottom: 32, lineHeight: 1.65, maxWidth: 560 }}
-        >
-          A tiny floating Mac app that turns spoken thoughts into clean text. Press a shortcut, talk, and get a transcript on your clipboard &mdash; no cloud API, no sign-up.
-        </motion.p>
+          <motion.h1 {...fadeUp(0.08)}>
+            Capture the thought before it evaporates.
+          </motion.h1>
 
-        <motion.div
-          {...fadeUp(0.3)}
-          style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}
-        >
-          <a
-            href="https://github.com/Vietnam-VoDich/voice-snippet/releases/latest"
-            className="button primary"
+          <motion.p
+            {...fadeUp(0.16)}
+            style={{ color: 'var(--muted)', fontSize: 'clamp(16px, 2vw, 19px)', marginBottom: 32, lineHeight: 1.65, maxWidth: 540 }}
           >
-            <Download size={18} />
-            Download for Mac
-          </a>
-          <a
-            href="https://github.com/Vietnam-VoDich/voice-snippet"
-            className="button secondary"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <GithubIcon size={18} />
-            View on GitHub
-          </a>
-        </motion.div>
+            A tiny floating Mac app that turns spoken thoughts into clean text. Press a shortcut, talk, and get a transcript on your clipboard &mdash; private, free, and entirely on-device.
+          </motion.p>
 
-        <motion.p
-          {...fadeUp(0.5)}
-          style={{ marginTop: 20, fontSize: 13, color: 'var(--muted)', fontWeight: 500 }}
-        >
-          Apple Silicon Mac &middot; macOS 26+ &middot; Apple Intelligence for rewrite styles
-        </motion.p>
-      </div>
-
-      {/* Visual column */}
-      <motion.div
-        className="hero-visual"
-        initial={{ opacity: 0, scale: 0.96, y: 16 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ duration: 0.7, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-      >
-        <div className="demo-frame" style={{ padding: 3 }}>
-          <video
-            autoPlay
-            loop
-            muted
-            playsInline
-            style={{ width: '100%', borderRadius: 18, background: 'var(--soft)', display: 'block' }}
-            poster="/assets/demo-start.png"
+          <motion.div
+            {...fadeUp(0.24)}
+            style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}
           >
-            <source src="/assets/voice-snippet-demo.mp4" type="video/mp4" />
-          </video>
+            <a
+              href="https://github.com/Vietnam-VoDich/voice-snippet/releases/latest"
+              className="button primary"
+            >
+              <Download size={18} />
+              Download for Mac
+            </a>
+            <a
+              href="https://github.com/Vietnam-VoDich/voice-snippet"
+              className="button secondary"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <GithubIcon size={18} />
+              View on GitHub
+            </a>
+          </motion.div>
+
+          <motion.p
+            {...fadeUp(0.4)}
+            style={{ marginTop: 24, fontSize: 13, color: 'var(--muted)', fontWeight: 500 }}
+          >
+            Apple Silicon Mac &middot; macOS 26+ &middot; Free forever &middot; 100% private
+          </motion.p>
         </div>
-      </motion.div>
+
+        {/* Visual column */}
+        <motion.div
+          className="hero-visual"
+          initial={{ opacity: 0, y: 32 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
+        >
+          <motion.div
+            className="demo-frame"
+            style={{ padding: 3 }}
+            animate={{ y: [0, -8, 0] }}
+            transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
+          >
+            <video
+              autoPlay
+              loop
+              muted
+              playsInline
+              style={{ width: '100%', borderRadius: 20, background: 'var(--soft)', display: 'block' }}
+              poster="/assets/demo-start.png"
+            >
+              <source src="/assets/voice-snippet-demo.mp4" type="video/mp4" />
+            </video>
+          </motion.div>
+        </motion.div>
+      </div>
     </section>
   );
 }
